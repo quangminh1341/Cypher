@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import fetch from 'node-fetch';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import http from 'http';
 
 // Nạp các biến môi trường từ tệp .env
 dotenv.config();
@@ -10,7 +11,6 @@ dotenv.config();
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const MONGO_URI = process.env.MONGO_URI;
-const PORT = process.env.PORT || 3000;
 
 // Tạo client Discord
 const client = new Client({
@@ -168,3 +168,15 @@ client.on('messageCreate', async (message) => {
 
 // Đăng nhập bot vào Discord
 client.login(DISCORD_TOKEN);
+
+// Tạo server HTTP để tránh lỗi Port Binding của Render
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Bot is running');
+});
+
+// Lắng nghe trên cổng mà Render cung cấp
+const PORT = process.env.PORT || 3000;  // Sử dụng cổng Render cung cấp hoặc cổng mặc định 3000
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});

@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import http from 'http';
+import express from 'express';
 
 // Nạp các biến môi trường từ tệp .env
 dotenv.config();
@@ -119,64 +120,33 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   }
 });
 
-// Lệnh để kiểm tra tổng thời gian chơi của người dùng theo mention (@user)
-client.on('messageCreate', async (message) => {
-  if (message.content.startsWith('!time')) {
-    const mentionedUser = message.mentions.users.first(); // Lấy người dùng đầu tiên được mention
+// Tạo Express app
+const app = express();
+app.use(express.json());
 
-    if (!mentionedUser) {
-      message.channel.send('Vui lòng mention người dùng mà bạn muốn kiểm tra thời gian chơi!');
-      return;
-    }
+// API để lấy thông tin người dùng
+app.get('/api/user/:userId', async (req, res) => {
+  const { userId } = req.params;
 
-    const userId = mentionedUser.id;
+  try {
     const user = await User.findOne({ userId });
-
-    if (user) {
-      message.channel.send(`Tổng thời gian chơi của **${mentionedUser.tag}** là: **${user.totalPlayTime}** phút.`);
-    } else {
-      message.channel.send(`Người dùng này chưa có dữ liệu trò chơi.`);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
+    res.json({
+      userId: user.userId,
+      totalPlayTime: user.totalPlayTime,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error', error });
   }
-
-  // Lệnh xóa dữ liệu tổng giờ chơi của một người dùng
-  if (message.content.startsWith('!deltime')) {
-    const mentionedUser = message.mentions.users.first();
-
-    if (!mentionedUser) {
-      message.channel.send('Vui lòng mention người dùng mà bạn muốn xóa dữ liệu!');
-      return;
-    }
-
-    const userId = mentionedUser.id;
-    const user = await User.findOne({ userId });
-
-    if (user) {
-      await User.deleteOne({ userId });  // Xóa dữ liệu của người dùng
-      message.channel.send(`Đã xóa dữ liệu tổng thời gian chơi của **${mentionedUser.tag}**.`);
-    } else {
-      message.channel.send(`Người dùng này không có dữ liệu tổng thời gian chơi.`);
-    }
-  }
-
-  // Lệnh xóa tất cả dữ liệu tổng giờ chơi
-  if (message.content.startsWith('!deltimeall')) {
-    await User.deleteMany({});  // Xóa tất cả dữ liệu
-    message.channel.send('Đã xóa tất cả dữ liệu tổng thời gian chơi.');
-  }
-});
-
-// Đăng nhập bot vào Discord
-client.login(DISCORD_TOKEN);
-
-// Tạo server HTTP để tránh lỗi Port Binding của Render
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('Bot is running');
 });
 
 // Lắng nghe trên cổng mà Render cung cấp
 const PORT = process.env.PORT || 3000;  // Sử dụng cổng Render cung cấp hoặc cổng mặc định 3000
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+// Đăng nhập bot vào Discord
+client.login(DISCORD_TOKEN);

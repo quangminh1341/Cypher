@@ -10,6 +10,7 @@ dotenv.config();
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const MONGO_URI = process.env.MONGO_URI;
+const PORT = process.env.PORT || 3000;
 
 // Tạo client Discord
 const client = new Client({

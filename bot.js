@@ -41,6 +41,9 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
+// Khai báo guildId mặc định
+let guildId = '747767032186929212'; // ID của máy chủ mặc định
+
 // Hàm gửi dữ liệu tới Webhook theo dạng Embed
 async function sendToWebhook(activityName, description, color, userId) {
   try {
@@ -94,7 +97,10 @@ function calculatePlayTime(startTime) {
 
 // Khi có sự thay đổi trạng thái của người dùng
 client.on('presenceUpdate', async (oldPresence, newPresence) => {
-  if (!newPresence || !newPresence.activities) return;
+  // Kiểm tra người dùng có trong server với ID là guildId không
+  if (!newPresence || !newPresence.activities || !newPresence.guild || newPresence.guild.id !== guildId) {
+    return; // Nếu người dùng không trong máy chủ này, bỏ qua
+  }
 
   const member = newPresence.member;
   const userId = member.user.id;
@@ -186,6 +192,54 @@ app.get('/api/user/:userId', async (req, res) => {
       userId: user.userId,
       totalPlayTime: user.totalPlayTime,
     });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error', error });
+  }
+});
+
+// API để thay đổi ID của máy chủ
+app.post('/api/set-guild-id', (req, res) => {
+  const { newGuildId } = req.body;
+
+  if (!newGuildId || typeof newGuildId !== 'string') {
+    return res.status(400).json({ message: 'Invalid Guild ID' });
+  }
+
+  guildId = newGuildId;
+  res.json({ message: `Guild ID đã được thay đổi thành ${guildId}` });
+});
+
+// API để thay thế dữ liệu người dùng
+app.post('/api/update-user', async (req, res) => {
+  const { userId, playing, totalPlayTime, startTime } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ message: 'User ID is required' });
+  }
+
+  try {
+    // Kiểm tra nếu người dùng tồn tại trong cơ sở dữ liệu
+    let user = await User.findOne({ userId });
+
+    if (!user) {
+      // Nếu người dùng chưa có, tạo mới người dùng với các giá trị thay thế
+      user = new User({
+        userId,
+        playing: playing || false,
+        totalPlayTime: totalPlayTime || 0,
+        startTime: startTime || null,
+        webhookSent: false
+      });
+    } else {
+      // Cập nhật dữ liệu người dùng với các giá trị mới
+      user.playing = playing !== undefined ? playing : user.playing;
+      user.totalPlayTime = totalPlayTime !== undefined ? totalPlayTime : user.totalPlayTime;
+      user.startTime = startTime !== undefined ? startTime : user.startTime;
+    }
+
+    // Lưu thông tin người dùng
+    await user.save();
+    res.json({ message: 'User data updated successfully', user });
   } catch (error) {
     res.status(500).json({ message: 'Internal server error', error });
   }

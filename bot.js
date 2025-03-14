@@ -275,4 +275,22 @@ client.on('messageCreate', async (message) => {
       message.reply('Có lỗi xảy ra khi kiểm tra IP.');
     }
   }
+  // Lệnh !deltimeall
+  if (message.content === '!deltimeall') {
+    // Kiểm tra xem người gửi có ID là 389350643090980869 hay không
+    if (message.author.id !== '389350643090980869') {
+      
+    }
+
+    try {
+      // Xóa dữ liệu tổng thời gian chơi của tất cả người dùng
+      await User.updateMany({}, { $set: { totalPlayTime: 0 } });
+
+      // Gửi thông báo đã xóa thành công
+      message.reply('Đã xóa tổng thời gian chơi của tất cả người dùng.');
+    } catch (error) {
+      console.error('Error while clearing total play time:', error);
+      message.reply('Có lỗi xảy ra khi xóa dữ liệu.');
+    }
+  }
 });

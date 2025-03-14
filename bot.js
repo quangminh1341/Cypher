@@ -109,7 +109,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     await user.save();
     sendToWebhook(
       "League of Legends", // Title là tên trò chơi
-      `**${member.user.tag}** đã bắt đầu chơi Liên Minh Huyền Thoại.`,
+      `**${member.user.tag}** đã bắt đầu chơi.`,
       0x00FF00 // Màu xanh lá
     );
   }
@@ -121,7 +121,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     await user.save();
     sendToWebhook(
       "League of Legends", // Title là tên trò chơi
-      `**${member.user.tag}** đã bắt đầu chơi Liên Minh Huyền Thoại.`,
+      `**${member.user.tag}** đã bắt đầu chơi.`,
       0x00FF00 // Màu xanh lá
     );
   }
@@ -138,7 +138,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     // Gửi thông báo ngay lập tức sau khi tính tổng thời gian chơi
     sendToWebhook(
       "League of Legends", // Title là tên trò chơi
-      `**${member.user.tag}** đã kết thúc trò chơi Liên Minh Huyền Thoại. Tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`,
+      `**${member.user.tag}** đã kết thúc trò chơi. Tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`,
       0xFF0000 // Màu đỏ
     );
   }

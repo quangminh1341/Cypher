@@ -83,7 +83,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
 
   // Kiểm tra trạng thái chơi Liên Minh Huyền Thoại
   const isPlayingLol = newPresence.activities.some(activity => activity.name === "League of Legends");
-  const isInLobby = newPresence.activities.some(activity => activity.state === "In Lobby" || activity.state === "Đang trong sảnh chờ");
+  const isInLobby = newPresence.activities.some(activity => activity.state === "In Lobby" || activity.state === "Đang trong sảnh chờ" || activity.state === "Đang tìm trận");
 
   // Bỏ qua khi người dùng đang trong trạng thái "In Lobby" hoặc "Đang trong sảnh chờ"
   if (isInLobby) {

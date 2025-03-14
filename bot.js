@@ -329,9 +329,9 @@ client.login(DISCORD_TOKEN);
 
   // Lệnh !deltimeall (Xóa toàn bộ thời gian chơi của tất cả người dùng)
   if (message.content === '!deltimeall') {
-    // Kiểm tra quyền admin
     if (!message.member.permissions.has('ADMINISTRATOR')) {
-      return message.reply('Bạn không có quyền thực hiện lệnh này.');
+      message.reply('Bạn không có quyền thực hiện lệnh này.');
+      return;  // Thoát khỏi hàm nếu người dùng không có quyền.
     }
 
     try {

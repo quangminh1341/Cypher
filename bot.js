@@ -39,7 +39,7 @@ const userSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', userSchema);
-
+ 
 // Hàm gửi dữ liệu tới Webhook theo dạng Embed
 async function sendToWebhook(activityName, description, color) {
   try {

@@ -40,13 +40,26 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-// Hàm gửi dữ liệu tới Webhook
-async function sendToWebhook(message) {
+// Hàm gửi dữ liệu tới Webhook theo dạng Embed
+async function sendToWebhook(title, description) {
   try {
+    const embed = {
+      embeds: [
+        {
+          title: title,
+          description: description,
+          footer: {
+            text: `Thời gian gửi: ${new Date().toLocaleString()}`, // Footer chứa thời gian gửi
+          },
+          timestamp: new Date(), // Thêm timestamp để Discord hiển thị thời gian chính xác
+        }
+      ]
+    };
+
     const response = await fetch(WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: message })
+      body: JSON.stringify(embed),
     });
 
     if (!response.ok) {
@@ -94,7 +107,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   if (isPlayingLol && !user) {
     user = new User({ userId, playing: true, startTime: Date.now(), totalPlayTime: 0 });
     await user.save();
-    sendToWebhook(`**${member.user.tag}** đã bắt đầu chơi Liên Minh Huyền Thoại lần đầu tiên.`);
+    sendToWebhook(`Đã bắt đầu chơi Liên Minh Huyền Thoại: **${member.user.tag}**`);
   }
 
   // Nếu người dùng đã chơi Liên Minh Huyền Thoại và đã bắt đầu tính giờ
@@ -102,7 +115,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     user.playing = true;
     user.startTime = Date.now();
     await user.save();
-    sendToWebhook(`**${member.user.tag}** đã bắt đầu chơi Liên Minh Huyền Thoại.`);
+    sendToWebhook("Đã bắt đầu chơi", `Đã bắt đầu chơi Liên Minh Huyền Thoại: **${member.user.tag}**`);
   }
 
   // Nếu người dùng không còn chơi Liên Minh Huyền Thoại

@@ -44,13 +44,6 @@ const User = mongoose.model('User', userSchema);
 // Hàm gửi dữ liệu tới Webhook theo dạng Embed
 async function sendToWebhook(activityName, description, color, userId) {
   try {
-    // Kiểm tra nếu webhook đã được gửi rồi thì không gửi lại
-    let user = await User.findOne({ userId });
-    if (user && user.webhookSent) {
-      console.log('Webhook đã được gửi, không gửi lại.');
-      return;
-    }
-
     const embed = {
       embeds: [
         {

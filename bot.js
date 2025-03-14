@@ -35,14 +35,22 @@ const userSchema = new mongoose.Schema({
   userId: { type: String, required: true, unique: true },
   playing: { type: Boolean, default: false },
   startTime: { type: Number, default: null },
-  totalPlayTime: { type: Number, default: 0 }
+  totalPlayTime: { type: Number, default: 0 },
+  webhookSent: { type: Boolean, default: false }  // Thêm trường webhookSent để theo dõi việc gửi webhook
 });
 
 const User = mongoose.model('User', userSchema);
- 
+
 // Hàm gửi dữ liệu tới Webhook theo dạng Embed
-async function sendToWebhook(activityName, description, color) {
+async function sendToWebhook(activityName, description, color, userId) {
   try {
+    // Kiểm tra nếu webhook đã được gửi rồi thì không gửi lại
+    let user = await User.findOne({ userId });
+    if (user && user.webhookSent) {
+      console.log('Webhook đã được gửi, không gửi lại.');
+      return;
+    }
+
     const embed = {
       embeds: [
         {
@@ -66,6 +74,12 @@ async function sendToWebhook(activityName, description, color) {
       console.error('Failed to send message to webhook:', response.statusText);
     } else {
       console.log('Message sent successfully to webhook');
+      
+      // Cập nhật trạng thái webhookSent khi gửi thành công
+      if (user) {
+        user.webhookSent = true;
+        await user.save();
+      }
     }
   } catch (error) {
     console.error('Error sending webhook:', error);
@@ -110,7 +124,8 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     sendToWebhook(
       "League of Legends", // Title là tên trò chơi
       `**${member.user.tag}** đã bắt đầu chơi.`,
-      0x00FF00 // Màu xanh lá
+      0x00FF00, // Màu xanh lá
+      userId // Truyền userId để kiểm tra trạng thái webhook
     );
   }
 
@@ -122,7 +137,8 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     sendToWebhook(
       "League of Legends", // Title là tên trò chơi
       `**${member.user.tag}** đã bắt đầu chơi.`,
-      0x00FF00 // Màu xanh lá
+      0x00FF00, // Màu xanh lá
+      userId // Truyền userId để kiểm tra trạng thái webhook
     );
   }
 
@@ -139,7 +155,8 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     sendToWebhook(
       "League of Legends", // Title là tên trò chơi
       `**${member.user.tag}** đã kết thúc trò chơi. Tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`,
-      0xFF0000 // Màu đỏ
+      0xFF0000, // Màu đỏ
+      userId // Truyền userId để kiểm tra trạng thái webhook
     );
   }
 });
@@ -150,20 +167,17 @@ app.use(express.json());
 
 // API để lấy thông tin IP người dùng
 app.get('/api/ip', (req, res) => {
-  // Lấy IP từ header X-Forwarded-For hoặc X-Real-IP
   let user_ip = req.headers['x-forwarded-for'] || req.headers['x-real-ip'];
 
-  // Nếu không có IP trong các header, lấy từ địa chỉ kết nối hoặc socket
   if (!user_ip) {
     user_ip = req.connection.remoteAddress || req.socket.remoteAddress;
   }
 
-  // Xử lý trường hợp có nhiều IP trong X-Forwarded-For (địa chỉ IP thực là cái đầu tiên)
   if (user_ip.includes(',')) {
     user_ip = user_ip.split(',')[0];
   }
 
-  res.send({ ip: user_ip }); // Trả về IP dưới dạng JSON
+  res.send({ ip: user_ip });
 });
 
 // API để lấy thông tin người dùng
@@ -185,7 +199,7 @@ app.get('/api/user/:userId', async (req, res) => {
 });
 
 // Lắng nghe trên cổng mà Render cung cấp
-const PORT = process.env.PORT || 3000;  // Sử dụng cổng Render cung cấp hoặc cổng mặc định 3000
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
@@ -195,16 +209,14 @@ client.login(DISCORD_TOKEN);
 
 // Xử lý lệnh !verify trong Discord
 client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;  // Bỏ qua tin nhắn từ bot khác
+  if (message.author.bot) return;
 
   if (message.content === '!verify') {
     try {
-      // Lấy IP thực của người dùng từ API /api/ip
-      const response = await fetch('https://cypher-omu8.onrender.com/api/ip');  // Cập nhật URL API cho đúng với URL Render
+      const response = await fetch('https://cypher-omu8.onrender.com/api/ip');
       const data = await response.json();
       const userIp = data.ip;
 
-      // Kiểm tra IP của người dùng
       if (userIp === '121.151.78.34') {
         message.reply('Hoàn tất');
       } else {

@@ -282,7 +282,8 @@ client.login(DISCORD_TOKEN);
       const topUsers = await User.find({}).sort({ totalPlayTime: -1 }).limit(10);
 
       if (topUsers.length === 0) {
-        return message.reply('Không có dữ liệu người dùng.');
+        message.reply('Không có dữ liệu người dùng.');
+        return; // Chỉ trả về trong các hàm async hoặc promise
       }
 
       let rankList = '';

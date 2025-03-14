@@ -340,21 +340,5 @@ client.on('messageCreate', async (message) => {
       message.reply('Có lỗi xảy ra khi xóa thời gian chơi.');
     }
   }
-
-  // Lệnh !deltimeall (Xóa toàn bộ thời gian chơi của tất cả người dùng)
-  if (message.content === '!deltimeall') {
-    if (!message.member.permissions.has('ADMINISTRATOR')) {
-      message.reply('Bạn không có quyền thực hiện lệnh này.');
-      return;  // Thoát khỏi hàm nếu người dùng không có quyền.
-    }
-
-    try {
-      // Xóa toàn bộ thời gian chơi của tất cả người dùng
-      await User.updateMany({}, { $set: { totalPlayTime: 0 } });
-      message.reply('Đã xóa toàn bộ thời gian chơi của tất cả người dùng!');
-    } catch (error) {
-      console.error('Error deleting all play time:', error);
-      message.reply('Có lỗi xảy ra khi xóa thời gian chơi.');
-    }
-  }
 });
+

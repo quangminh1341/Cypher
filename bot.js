@@ -50,7 +50,7 @@ async function sendToWebhook(activityName, description, color) {
           description: description,
           color: color,
           footer: {
-            text: `${new Date().toLocaleString()}`, // Footer chứa thời gian gửi
+            text: `${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`
           },
         }
       ]

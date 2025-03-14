@@ -41,17 +41,17 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 
 // Hàm gửi dữ liệu tới Webhook theo dạng Embed
-async function sendToWebhook(title, description) {
+async function sendToWebhook(activityName, description, color) {
   try {
     const embed = {
       embeds: [
         {
-          title: title,
+          title: activityName,
           description: description,
+          color: color,
           footer: {
-            text: `Thời gian gửi: ${new Date().toLocaleString()}`, // Footer chứa thời gian gửi
+            text: `${new Date().toLocaleString()}`, // Footer chứa thời gian gửi
           },
-          timestamp: new Date(), // Thêm timestamp để Discord hiển thị thời gian chính xác
         }
       ]
     };
@@ -107,7 +107,11 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   if (isPlayingLol && !user) {
     user = new User({ userId, playing: true, startTime: Date.now(), totalPlayTime: 0 });
     await user.save();
-    sendToWebhook(`Đã bắt đầu chơi Liên Minh Huyền Thoại: **${member.user.tag}**`);
+    sendToWebhook(
+      "League of Legends", // Title là tên trò chơi
+      `**${member.user.tag}** đã bắt đầu chơi Liên Minh Huyền Thoại.`,
+      0x00FF00 // Màu xanh lá
+    );
   }
 
   // Nếu người dùng đã chơi Liên Minh Huyền Thoại và đã bắt đầu tính giờ
@@ -115,7 +119,11 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     user.playing = true;
     user.startTime = Date.now();
     await user.save();
-    sendToWebhook("Đã bắt đầu chơi", `Đã bắt đầu chơi Liên Minh Huyền Thoại: **${member.user.tag}**`);
+    sendToWebhook(
+      "League of Legends", // Title là tên trò chơi
+      `**${member.user.tag}** đã bắt đầu chơi Liên Minh Huyền Thoại.`,
+      0x00FF00 // Màu xanh lá
+    );
   }
 
   // Nếu người dùng không còn chơi Liên Minh Huyền Thoại
@@ -128,7 +136,11 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     await user.save();
 
     // Gửi thông báo ngay lập tức sau khi tính tổng thời gian chơi
-    sendToWebhook(`**${member.user.tag}** đã kết thúc trò chơi Liên Minh Huyền Thoại. Tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`);
+    sendToWebhook(
+      "League of Legends", // Title là tên trò chơi
+      `**${member.user.tag}** đã kết thúc trò chơi Liên Minh Huyền Thoại. Tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`,
+      0xFF0000 // Màu đỏ
+    );
   }
 });
 

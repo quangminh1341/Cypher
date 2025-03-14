@@ -258,24 +258,6 @@ app.listen(PORT, () => {
 // Đăng nhập bot vào Discord
 client.login(DISCORD_TOKEN);
 
- // Lệnh !verify
-  if (message.content === '!verify') {
-    try {
-      const response = await fetch('https://cypher-omu8.onrender.com/api/ip');
-      const data = await response.json();
-      const userIp = data.ip;
-
-      if (userIp === '121.151.78.34') {
-        message.reply('Hoàn tất');
-      } else {
-        message.reply(`IP của bạn không khớp. IP hiện tại của bạn là ${userIp}`);
-      }
-    } catch (error) {
-      console.error('Error fetching user IP:', error);
-      message.reply('Đã có lỗi khi xác thực.');
-    }
-  }
-
   // Khi có lệnh !ranktime
 client.on('messageCreate', async (message) => {
   if (message.content === '!ranktime') {

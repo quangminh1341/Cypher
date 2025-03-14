@@ -2,7 +2,6 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import fetch from 'node-fetch';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import http from 'http';
 import express from 'express';
 
 // Nạp các biến môi trường từ tệp .env
@@ -73,73 +72,20 @@ function calculatePlayTime(startTime) {
   return minutes;
 }
 
-// Khi có sự thay đổi trạng thái của người dùng
-client.on('presenceUpdate', async (oldPresence, newPresence) => {
-  if (!newPresence || !newPresence.activities) return;
-
-  const member = newPresence.member;
-  const userId = member.user.id;
-
-  let user = await User.findOne({ userId });
-
-  // Kiểm tra trạng thái chơi Liên Minh Huyền Thoại
-  const isPlayingLol = newPresence.activities.some(activity => activity.name === "League of Legends");
-  const isInLobby = newPresence.activities.some(activity => activity.state === "In Lobby" || activity.state === "Đang trong sảnh chờ");
-
-  // Bỏ qua khi người dùng đang trong trạng thái "In Lobby" hoặc "Đang trong sảnh chờ"
-  if (isInLobby) {
-    return;
-  }
-
-  // Nếu người dùng chưa có bản ghi và bắt đầu chơi Liên Minh Huyền Thoại lần đầu
-  if (isPlayingLol && !user) {
-    user = new User({ userId, playing: true, startTime: Date.now(), totalPlayTime: 0 });
-    await user.save();
-    sendToWebhook(`**${member.user.tag}** đã bắt đầu chơi Liên Minh Huyền Thoại lần đầu tiên.`);
-  }
-
-  // Nếu người dùng đã chơi Liên Minh Huyền Thoại và đã bắt đầu tính giờ
-  if (isPlayingLol && user && !user.playing) {
-    user.playing = true;
-    user.startTime = Date.now();
-    await user.save();
-    sendToWebhook(`**${member.user.tag}** đã bắt đầu chơi Liên Minh Huyền Thoại.`);
-  }
-
-  // Nếu người dùng không còn chơi Liên Minh Huyền Thoại
-  if (!isPlayingLol && user && user.playing) {
-    // Tính thời gian chơi và lưu lại
-    const playTime = calculatePlayTime(user.startTime); // Tính thời gian chơi
-    user.totalPlayTime += playTime; // Cộng thêm thời gian chơi vào tổng thời gian
-
-    user.playing = false; // Đánh dấu là không còn chơi nữa
-    await user.save();
-
-    // Gửi thông báo ngay lập tức sau khi tính tổng thời gian chơi
-    sendToWebhook(`**${member.user.tag}** đã kết thúc trò chơi Liên Minh Huyền Thoại. Tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`);
-  }
-});
-
-// Tạo Express app
+// API để lấy thông tin IP người dùng
 const app = express();
 app.use(express.json());
 
-// API để lấy thông tin người dùng
-app.get('/api/user/:userId', async (req, res) => {
-  const { userId } = req.params;
+app.get('/api/ip', (req, res) => {
+  // Lấy IP từ header X-Forwarded-For hoặc X-Real-IP
+  let user_ip = req.headers['x-forwarded-for'] || req.headers['x-real-ip'];
 
-  try {
-    const user = await User.findOne({ userId });
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    res.json({
-      userId: user.userId,
-      totalPlayTime: user.totalPlayTime,
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Internal server error', error });
+  if (!user_ip) {
+    // Dự phòng nếu không có thông tin từ các headers trên
+    user_ip = req.connection.remoteAddress || req.socket.remoteAddress;
   }
+
+  res.send({ ip: user_ip }); // Trả về IP dưới dạng JSON
 });
 
 // Lắng nghe trên cổng mà Render cung cấp
@@ -150,3 +96,27 @@ app.listen(PORT, () => {
 
 // Đăng nhập bot vào Discord
 client.login(DISCORD_TOKEN);
+
+// Xử lý lệnh !verify trong Discord
+client.on('messageCreate', async (message) => {
+  if (message.author.bot) return;  // Bỏ qua tin nhắn từ bot khác
+
+  if (message.content === '!verify') {
+    try {
+      // Lấy IP thực của người dùng từ API /api/ip
+      const response = await fetch('http://localhost:3000/api/ip');
+      const data = await response.json();
+      const userIp = data.ip;
+
+      // Kiểm tra IP của người dùng
+      if (userIp === '121.151.78.34') {
+        message.reply('Hoàn tất');
+      } else {
+        message.reply(`IP của bạn không khớp. IP hiện tại của bạn là ${userIp}`);
+      }
+    } catch (error) {
+      console.error('Error while fetching IP:', error);
+      message.reply('Có lỗi xảy ra khi kiểm tra IP.');
+    }
+  }
+});

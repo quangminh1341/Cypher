@@ -54,7 +54,7 @@ async function sendToWebhook(activityName, description, color, userId) {
           description: description,
           color: color,
           footer: {
-            text: ${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+            text: `${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`
           },
         }
       ]

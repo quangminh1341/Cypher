@@ -44,6 +44,9 @@ const User = mongoose.model('User', userSchema);
 // Khai báo guildId mặc định
 let guildId = '747767032186929212'; // ID của máy chủ mặc định
 
+// Biến toàn cục lưu ID tin nhắn bảng xếp hạng
+let rankMessageId = null;  
+
 // Hàm gửi dữ liệu tới Webhook theo dạng Embed
 async function sendToWebhook(activityName, description, color, userId) {
   try {
@@ -259,6 +262,7 @@ client.login(DISCORD_TOKEN);
 client.on('messageCreate', async (message) => {
   if (message.author?.bot) return;
 
+  // Lệnh !verify
   if (message.content === '!verify') {
     try {
       const response = await fetch('https://cypher-omu8.onrender.com/api/ip');
@@ -275,22 +279,99 @@ client.on('messageCreate', async (message) => {
       message.reply('Có lỗi xảy ra khi kiểm tra IP.');
     }
   }
+
   // Lệnh !deltimeall
   if (message.content === '!deltimeall') {
-    // Kiểm tra xem người gửi có ID là 389350643090980869 hay không
     if (message.author.id !== '389350643090980869') {
-      
+      return message.reply('Bạn không có quyền sử dụng lệnh này.');
     }
 
     try {
-      // Xóa dữ liệu tổng thời gian chơi của tất cả người dùng
       await User.updateMany({}, { $set: { totalPlayTime: 0 } });
-
-      // Gửi thông báo đã xóa thành công
       message.reply('Đã xóa tổng thời gian chơi của tất cả người dùng.');
     } catch (error) {
       console.error('Error while clearing total play time:', error);
       message.reply('Có lỗi xảy ra khi xóa dữ liệu.');
     }
   }
+
+  // Lệnh !ranktime
+  if (message.content === '!ranktime') {
+    try {
+      const topUsers = await User.find({}).sort({ totalPlayTime: -1 }).limit(10);
+
+      if (topUsers.length === 0) {
+        return message.reply('Không có dữ liệu người dùng.');
+      }
+
+      let rankList = '**Top 10 người chơi có tổng thời gian chơi cao nhất:**\n\n';
+      topUsers.forEach((user, index) => {
+        rankList += `**${index + 1}.** <@${user.userId}> - ${user.totalPlayTime} phút\n`;
+      });
+
+      // Tạo Embed cho bảng xếp hạng
+      const embed = {
+        embeds: [
+          {
+            title: 'Top 10 Time Point Rank',
+            description: rankList,
+            color: 0x00FF00, // Màu xanh lá
+            footer: {
+              text: `Cập nhật lúc: ${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
+            },
+          },
+        ],
+      };
+
+      // Gửi bảng xếp hạng lần đầu tiên và lưu lại ID tin nhắn
+      const rankMessage = await message.channel.send(embed);
+      rankMessageId = rankMessage.id;  // Lưu lại ID tin nhắn
+
+    } catch (error) {
+      console.error('Error fetching rank:', error);
+      message.reply('Có lỗi xảy ra khi lấy bảng xếp hạng.');
+    }
+  }
 });
+
+// Hàm tự động cập nhật bảng xếp hạng mỗi 30 phút
+setInterval(async () => {
+  if (!rankMessageId) {
+    return;  // Nếu chưa có tin nhắn bảng xếp hạng nào thì không làm gì
+  }
+
+  try {
+    const topUsers = await User.find({}).sort({ totalPlayTime: -1 }).limit(10);
+
+    if (topUsers.length === 0) {
+      console.log('Không có dữ liệu người dùng.');
+      return;
+    }
+
+    let rankList = '**Top 10 người chơi có tổng thời gian chơi cao nhất:**\n\n';
+    topUsers.forEach((user, index) => {
+      rankList += `**${index + 1}.** <@${user.userId}> - ${user.totalPlayTime} phút\n`;
+    });
+
+    // Tạo Embed mới để chỉnh sửa tin nhắn
+    const embed = {
+      embeds: [
+        {
+          title: 'Top 10 Time Point Rank',
+          description: rankList,
+          color: 0x00FF00, // Màu xanh lá
+          footer: {
+            text: `Cập nhật lúc: ${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
+          },
+        },
+      ],
+    };
+
+    // Lấy tin nhắn đã lưu ID và chỉnh sửa nó
+    const rankMessage = await message.channel.messages.fetch(rankMessageId);
+    rankMessage.edit(embed);  // Sửa lại tin nhắn bảng xếp hạng
+
+  } catch (error) {
+    console.error('Error fetching rank:', error);
+  }
+}, 30 * 60 * 1000);  // 30 phút (30 * 60 * 1000 ms)

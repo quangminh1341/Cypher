@@ -207,55 +207,21 @@ app.post('/api/set-guild-id', (req, res) => {
   }
 
   guildId = newGuildId;
-  res.json({ message: Guild ID đã được thay đổi thành ${guildId} });
-});
-
-// API để thay thế dữ liệu người dùng
-app.post('/api/update-user', async (req, res) => {
-  const { userId, playing, totalPlayTime, startTime } = req.body;
-
-  if (!userId) {
-    return res.status(400).json({ message: 'User ID is required' });
-  }
-
-  try {
-    // Kiểm tra nếu người dùng tồn tại trong cơ sở dữ liệu
-    let user = await User.findOne({ userId });
-
-    if (!user) {
-      // Nếu người dùng chưa có, tạo mới người dùng với các giá trị thay thế
-      user = new User({
-        userId,
-        playing: playing || false,
-        totalPlayTime: totalPlayTime || 0,
-        startTime: startTime || null,
-        webhookSent: false
-      });
-    } else {
-      // Cập nhật dữ liệu người dùng với các giá trị mới
-      user.playing = playing !== undefined ? playing : user.playing;
-      user.totalPlayTime = totalPlayTime !== undefined ? totalPlayTime : user.totalPlayTime;
-      user.startTime = startTime !== undefined ? startTime : user.startTime;
-    }
-
-    // Lưu thông tin người dùng
-    await user.save();
-    res.json({ message: 'User data updated successfully', user });
-  } catch (error) {
-    res.status(500).json({ message: 'Internal server error', error });
-  }
+  res.json({ message: `Guild ID đã được thay đổi thành ${guildId}` });
 });
 
 // Lắng nghe trên cổng mà Render cung cấp
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(Server is running on port ${PORT});
+  console.log(`Server is running on port ${PORT}`);
 });
 
 // Đăng nhập bot vào Discord
 client.login(DISCORD_TOKEN);
 
 // Hàm gửi bảng xếp hạng
+let rankMessageId = null;  // Khai báo biến lưu ID của tin nhắn bảng xếp hạng
+
 async function sendRankList(channel) {
   try {
     const topUsers = await User.find({}).sort({ totalPlayTime: -1 }).limit(10);
@@ -353,4 +319,5 @@ client.on('messageCreate', async (message) => {
       console.error('Error while clearing total play time:', error);
       message.reply('Có lỗi xảy ra khi xóa dữ liệu.');
     }
-  });
+  }
+});

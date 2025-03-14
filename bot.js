@@ -276,14 +276,15 @@ client.login(DISCORD_TOKEN);
     }
   }
 
-  // Lệnh !ranktime
+  // Khi có lệnh !ranktime
+client.on('messageCreate', async (message) => {
   if (message.content === '!ranktime') {
     try {
       const topUsers = await User.find({}).sort({ totalPlayTime: -1 }).limit(10);
 
       if (topUsers.length === 0) {
         message.reply('Không có dữ liệu người dùng.');
-        return; // Chỉ trả về trong các hàm async hoặc promise
+        return;  // Dừng ngay mà không cần dùng return trực tiếp ngoài hàm.
       }
 
       let rankList = '';
@@ -291,39 +292,52 @@ client.login(DISCORD_TOKEN);
         rankList += `**${index + 1}.** <@${user.userId}> - **${user.totalPlayTime}** phút\n`;
       });
 
-      // Lấy guild (server) và user có số phút cao nhất
       const guild = message.guild;
-      const topPlayer = topUsers[0]; // Người có số phút cao nhất
+      const topPlayer = topUsers[0];
 
-      // Tạo Embed cho bảng xếp hạng
       const embed = {
         embeds: [
           {
             title: 'Top 10 Time Point Rank',
             description: rankList,
-            color: 0x00FF00, // Màu xanh lá
+            color: 0x00FF00,
             author: {
-              name: `Server: ${guild.name}`, // Tên server
-              icon_url: guild.iconURL(), // Thêm icon của server vào author
+              name: `Server: ${guild.name}`,
+              icon_url: guild.iconURL(),
             },
             footer: {
               text: `Cập nhật lúc: ${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
-              icon_url: guild.iconURL(), // Thêm icon của server vào footer
+              icon_url: guild.iconURL(),
             },
             thumbnail: {
-              url: topPlayer.user.avatarURL(), // Avatar của người chơi có số phút cao nhất
+              url: topPlayer.user.avatarURL(),
             },
           },
         ],
       };
 
-      // Gửi bảng xếp hạng lần đầu tiên và lưu lại ID tin nhắn
       const rankMessage = await message.channel.send(embed);
-      rankMessageId = rankMessage.id;  // Lưu lại ID tin nhắn
+      rankMessageId = rankMessage.id;
 
     } catch (error) {
       console.error('Error fetching rank:', error);
       message.reply('Có lỗi xảy ra khi lấy bảng xếp hạng.');
+    }
+  }
+
+  // Lệnh !deltimeall
+  if (message.content === '!deltimeall') {
+    if (!message.member.permissions.has('ADMINISTRATOR')) {
+      message.reply('Bạn không có quyền thực hiện lệnh này.');
+      return;  // Dừng ngay sau khi trả lời.
+    }
+
+    try {
+      await User.updateMany({}, { $set: { totalPlayTime: 0 } });
+      message.reply('Đã xóa toàn bộ thời gian chơi của tất cả người dùng!');
+    } catch (error) {
+      console.error('Error deleting all play time:', error);
+      message.reply('Có lỗi xảy ra khi xóa thời gian chơi.');
     }
   }
 

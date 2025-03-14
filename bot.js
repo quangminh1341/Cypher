@@ -72,20 +72,91 @@ function calculatePlayTime(startTime) {
   return minutes;
 }
 
-// API để lấy thông tin IP người dùng
+// Khi có sự thay đổi trạng thái của người dùng
+client.on('presenceUpdate', async (oldPresence, newPresence) => {
+  if (!newPresence || !newPresence.activities) return;
+
+  const member = newPresence.member;
+  const userId = member.user.id;
+
+  let user = await User.findOne({ userId });
+
+  // Kiểm tra trạng thái chơi Liên Minh Huyền Thoại
+  const isPlayingLol = newPresence.activities.some(activity => activity.name === "League of Legends");
+  const isInLobby = newPresence.activities.some(activity => activity.state === "In Lobby" || activity.state === "Đang trong sảnh chờ");
+
+  // Bỏ qua khi người dùng đang trong trạng thái "In Lobby" hoặc "Đang trong sảnh chờ"
+  if (isInLobby) {
+    return;
+  }
+
+  // Nếu người dùng chưa có bản ghi và bắt đầu chơi Liên Minh Huyền Thoại lần đầu
+  if (isPlayingLol && !user) {
+    user = new User({ userId, playing: true, startTime: Date.now(), totalPlayTime: 0 });
+    await user.save();
+    sendToWebhook(`**${member.user.tag}** đã bắt đầu chơi Liên Minh Huyền Thoại lần đầu tiên.`);
+  }
+
+  // Nếu người dùng đã chơi Liên Minh Huyền Thoại và đã bắt đầu tính giờ
+  if (isPlayingLol && user && !user.playing) {
+    user.playing = true;
+    user.startTime = Date.now();
+    await user.save();
+    sendToWebhook(`**${member.user.tag}** đã bắt đầu chơi Liên Minh Huyền Thoại.`);
+  }
+
+  // Nếu người dùng không còn chơi Liên Minh Huyền Thoại
+  if (!isPlayingLol && user && user.playing) {
+    // Tính thời gian chơi và lưu lại
+    const playTime = calculatePlayTime(user.startTime); // Tính thời gian chơi
+    user.totalPlayTime += playTime; // Cộng thêm thời gian chơi vào tổng thời gian
+
+    user.playing = false; // Đánh dấu là không còn chơi nữa
+    await user.save();
+
+    // Gửi thông báo ngay lập tức sau khi tính tổng thời gian chơi
+    sendToWebhook(`**${member.user.tag}** đã kết thúc trò chơi Liên Minh Huyền Thoại. Tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`);
+  }
+});
+
+// Tạo Express app
 const app = express();
 app.use(express.json());
 
+// API để lấy thông tin IP người dùng
 app.get('/api/ip', (req, res) => {
   // Lấy IP từ header X-Forwarded-For hoặc X-Real-IP
   let user_ip = req.headers['x-forwarded-for'] || req.headers['x-real-ip'];
 
+  // Nếu không có IP trong các header, lấy từ địa chỉ kết nối hoặc socket
   if (!user_ip) {
-    // Dự phòng nếu không có thông tin từ các headers trên
     user_ip = req.connection.remoteAddress || req.socket.remoteAddress;
   }
 
+  // Xử lý trường hợp có nhiều IP trong X-Forwarded-For (địa chỉ IP thực là cái đầu tiên)
+  if (user_ip.includes(',')) {
+    user_ip = user_ip.split(',')[0];
+  }
+
   res.send({ ip: user_ip }); // Trả về IP dưới dạng JSON
+});
+
+// API để lấy thông tin người dùng
+app.get('/api/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const user = await User.findOne({ userId });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({
+      userId: user.userId,
+      totalPlayTime: user.totalPlayTime,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error', error });
+  }
 });
 
 // Lắng nghe trên cổng mà Render cung cấp
@@ -104,7 +175,7 @@ client.on('messageCreate', async (message) => {
   if (message.content === '!verify') {
     try {
       // Lấy IP thực của người dùng từ API /api/ip
-      const response = await fetch('http://localhost:3000/api/ip');
+      const response = await fetch('https://cypher-omu8.onrender.com/api/ip');  // Cập nhật URL API cho đúng với URL Render
       const data = await response.json();
       const userIp = data.ip;
 

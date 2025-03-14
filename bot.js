@@ -72,6 +72,7 @@ async function sendToWebhook(activityName, description, color, userId) {
       console.log('Message sent successfully to webhook');
       
       // Cập nhật trạng thái webhookSent khi gửi thành công
+      const user = await User.findOne({ userId });
       if (user) {
         user.webhookSent = true;
         await user.save();
@@ -139,19 +140,26 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   }
 
   // Nếu người dùng không còn chơi Liên Minh Huyền Thoại
-if (!isPlayingLol && user && user.playing) {
-  const playTime = calculatePlayTime(user.startTime);
-  user.totalPlayTime += playTime;
-  user.playing = false;
-  user.startTime = null;
-  await user.save();
-  sendToWebhook(
-    "League of Legends",
-    `**${member.user.tag}** đã chơi **${playTime}** phút, tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`,
-    0xFF0000,
-    userId
-  );
-}
+  if (!isPlayingLol && user && user.playing) {
+    // Kiểm tra nếu startTime không tồn tại
+    if (!user.startTime) {
+      console.error(`startTime không được định nghĩa cho người dùng ${userId}`);
+      return;
+    }
+
+    const playTime = calculatePlayTime(user.startTime);
+    user.totalPlayTime += playTime;
+    user.playing = false;
+    user.startTime = null;
+    await user.save();
+    sendToWebhook(
+      "League of Legends",
+      `**${member.user.tag}** đã chơi **${playTime}** phút, tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`,
+      0xFF0000, // Màu đỏ
+      userId
+    );
+  }
+});
 
 // Tạo Express app
 const app = express();
@@ -249,7 +257,7 @@ client.login(DISCORD_TOKEN);
 
 // Xử lý lệnh !verify trong Discord
 client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
+  if (message.author?.bot) return;
 
   if (message.content === '!verify') {
     try {

@@ -44,9 +44,6 @@ const User = mongoose.model('User', userSchema);
 // Khai báo guildId mặc định
 let guildId = '747767032186929212'; // ID của máy chủ mặc định
 
-// Biến toàn cục lưu ID tin nhắn bảng xếp hạng
-let rankMessageId = null;  
-
 // Hàm gửi dữ liệu tới Webhook theo dạng Embed
 async function sendToWebhook(activityName, description, color, userId) {
   try {
@@ -57,7 +54,7 @@ async function sendToWebhook(activityName, description, color, userId) {
           description: description,
           color: color,
           footer: {
-            text: `${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`
+            text: ${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
           },
         }
       ]
@@ -123,7 +120,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     await user.save();
     sendToWebhook(
       "League of Legends", // Title là tên trò chơi
-      `**${member.user.tag}** đã bắt đầu chơi.`,
+      **${member.user.tag}** đã bắt đầu chơi.,
       0x00FF00, // Màu xanh lá
       userId
     );
@@ -136,7 +133,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     await user.save();
     sendToWebhook(
       "League of Legends",
-      `**${member.user.tag}** đã bắt đầu chơi.`,
+      **${member.user.tag}** đã bắt đầu chơi.,
       0x00FF00, // Màu xanh lá
       userId // Truyền userId để kiểm tra trạng thái webhook
     );
@@ -146,7 +143,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   if (!isPlayingLol && user && user.playing) {
     // Kiểm tra nếu startTime không tồn tại
     if (!user.startTime) {
-      console.error(`startTime không được định nghĩa cho người dùng ${userId}`);
+      console.error(startTime không được định nghĩa cho người dùng ${userId});
       return;
     }
 
@@ -157,7 +154,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     await user.save();
     sendToWebhook(
       "League of Legends",
-      `**${member.user.tag}** đã chơi **${playTime}** phút, tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`,
+      **${member.user.tag}** đã chơi **${playTime}** phút, tổng thời gian đã chơi: **${user.totalPlayTime}** phút.,
       0xFF0000, // Màu đỏ
       userId
     );
@@ -210,7 +207,7 @@ app.post('/api/set-guild-id', (req, res) => {
   }
 
   guildId = newGuildId;
-  res.json({ message: `Guild ID đã được thay đổi thành ${guildId}` });
+  res.json({ message: Guild ID đã được thay đổi thành ${guildId} });
 });
 
 // API để thay thế dữ liệu người dùng
@@ -252,75 +249,108 @@ app.post('/api/update-user', async (req, res) => {
 // Lắng nghe trên cổng mà Render cung cấp
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(Server is running on port ${PORT});
 });
 
 // Đăng nhập bot vào Discord
 client.login(DISCORD_TOKEN);
 
-  // Khi có lệnh !ranktime
-client.on('messageCreate', async (message) => {
-  if (message.content === '!ranktime') {
-    try {
-      const topUsers = await User.find({}).sort({ totalPlayTime: -1 }).limit(10);
+// Hàm gửi bảng xếp hạng
+async function sendRankList(channel) {
+  try {
+    const topUsers = await User.find({}).sort({ totalPlayTime: -1 }).limit(10);
 
-      if (topUsers.length === 0) {
-        message.reply('Không có dữ liệu người dùng.');
-        return;  // Dừng ngay mà không cần dùng return trực tiếp ngoài hàm.
-      }
+    if (topUsers.length === 0) {
+      console.log('Không có dữ liệu người dùng.');
+      return;
+    }
 
-      let rankList = '';
-      topUsers.forEach((user, index) => {
-        rankList += `**${index + 1}.** <@${user.userId}> - **${user.totalPlayTime}** phút\n`;
-      });
+    let rankList = '';
+    topUsers.forEach((user, index) => {
+      rankList += `**${index + 1}.** <@${user.userId}> - **${user.totalPlayTime}** phút\n`;
+    });
 
-      const guild = message.guild;
-      const topPlayer = topUsers[0];
+    // Lấy guild (server) và user có số phút cao nhất
+    const guild = await client.guilds.fetch(guildId);
+    const topPlayer = topUsers[0]; // Người có số phút cao nhất
 
-      const embed = {
-        embeds: [
-          {
-            title: 'Top 10 Time Point Rank',
-            description: rankList,
-            color: 0x00FF00,
-            author: {
-              name: `Server: ${guild.name}`,
-              icon_url: guild.iconURL(),
-            },
-            footer: {
-              text: `Cập nhật lúc: ${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
-              icon_url: guild.iconURL(),
-            },
-            thumbnail: {
-              url: topPlayer.user.avatarURL(),
-            },
+    // Tạo Embed cho bảng xếp hạng
+    const embed = {
+      embeds: [
+        {
+          title: 'Top 10 Time Point Rank',
+          description: rankList,
+          color: 0x00FF00, // Màu xanh lá
+          author: {
+            name: `Server: ${guild.name}`, // Tên server
+            icon_url: guild.iconURL(), // Thêm icon của server vào author
           },
-        ],
-      };
+          footer: {
+            text: `Cập nhật lúc: ${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
+            icon_url: guild.iconURL(), // Thêm icon của server vào footer
+          },
+          thumbnail: {
+            url: topPlayer.user.avatarURL(), // Avatar của người chơi có số phút cao nhất
+          },
+        },
+      ],
+    };
 
-      const rankMessage = await message.channel.send(embed);
-      rankMessageId = rankMessage.id;
+    // Gửi bảng xếp hạng lần đầu tiên và lưu lại ID tin nhắn
+    if (!rankMessageId) {
+      const rankMessage = await channel.send(embed);
+      rankMessageId = rankMessage.id;  // Lưu lại ID tin nhắn
+    } else {
+      // Chỉnh sửa tin nhắn bảng xếp hạng đã gửi
+      const rankMessage = await channel.messages.fetch(rankMessageId);
+      rankMessage.edit(embed);  // Chỉnh sửa tin nhắn cũ
+    }
 
+  } catch (error) {
+    console.error('Error fetching rank:', error);
+  }
+}
+
+// Lắng nghe tin nhắn mới để thực hiện các lệnh
+client.on('messageCreate', async (message) => {
+  // Lệnh !verify
+  if (message.content === '!verify') {
+    try {
+      const response = await fetch('https://cypher-omu8.onrender.com/api/ip');
+      const data = await response.json();
+      const userIp = data.ip;
+
+      if (userIp === '121.151.78.34') {
+        message.reply('Hoàn tất');
+      } else {
+        message.reply(`IP của bạn không khớp. IP hiện tại của bạn là ${userIp}`);
+      }
     } catch (error) {
-      console.error('Error fetching rank:', error);
-      message.reply('Có lỗi xảy ra khi lấy bảng xếp hạng.');
+      console.error('Error fetching user IP:', error);
+      message.reply('Đã có lỗi khi xác thực.');
     }
   }
 
+  // Lệnh !ranktime
+  if (message.content === '!ranktime') {
+    const channel = message.channel;  // Lấy channel của tin nhắn đang được gửi
+    await sendRankList(channel);  // Gửi bảng xếp hạng hoặc chỉnh sửa tin nhắn đã gửi
+  }
   // Lệnh !deltimeall
   if (message.content === '!deltimeall') {
-    if (!message.member.permissions.has('ADMINISTRATOR')) {
-      message.reply('Bạn không có quyền thực hiện lệnh này.');
-      return;  // Dừng ngay sau khi trả lời.
+    // Kiểm tra xem người gửi có ID là 389350643090980869 hay không
+    if (message.author.id !== '389350643090980869') {
+      return message.reply('Bạn không có quyền sử dụng lệnh này.');
     }
 
     try {
+      // Xóa dữ liệu tổng thời gian chơi của tất cả người dùng
       await User.updateMany({}, { $set: { totalPlayTime: 0 } });
-      message.reply('Đã xóa toàn bộ thời gian chơi của tất cả người dùng!');
-    } catch (error) {
-      console.error('Error deleting all play time:', error);
-      message.reply('Có lỗi xảy ra khi xóa thời gian chơi.');
-    }
-  }
-});
 
+      // Gửi thông báo đã xóa thành công
+      message.reply('Đã xóa tổng thời gian chơi của tất cả người dùng.');
+    } catch (error) {
+      console.error('Error while clearing total play time:', error);
+      message.reply('Có lỗi xảy ra khi xóa dữ liệu.');
+    }
+  });

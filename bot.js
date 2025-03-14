@@ -251,11 +251,10 @@ async function sendRankList(channel) {
     const embed = {
       embeds: [
         {
-          title: 'Top 10 Time Point Rank',
           description: rankList,
-          color: 0x00FF00, // Màu xanh lá
+          color: 0x90f5e7, // Màu xanh lá
           author: {
-            name: `Server: ${guild.name}`, // Tên server
+            name: `Top 10 Time Points Rank`, // Tên server
             icon_url: guild.iconURL(), // Thêm icon của server vào author
           },
           footer: {

@@ -97,9 +97,8 @@ function calculatePlayTime(startTime) {
 
 // Khi có sự thay đổi trạng thái của người dùng
 client.on('presenceUpdate', async (oldPresence, newPresence) => {
-  // Kiểm tra người dùng có trong server với ID là guildId không
   if (!newPresence || !newPresence.activities || !newPresence.guild || newPresence.guild.id !== guildId) {
-    return; // Nếu người dùng không trong máy chủ này, bỏ qua
+    return;
   }
 
   const member = newPresence.member;
@@ -110,8 +109,6 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   // Kiểm tra trạng thái chơi Liên Minh Huyền Thoại
   const isPlayingLol = newPresence.activities.some(activity => activity.name === "League of Legends");
   const isInLobby = newPresence.activities.some(activity => activity.state === "In Lobby" || activity.state === "Đang trong sảnh chờ" || activity.state === "Đang tìm trận");
-
-  // Bỏ qua khi người dùng đang trong trạng thái "In Lobby" hoặc "Đang trong sảnh chờ"
   if (isInLobby) {
     return;
   }
@@ -124,7 +121,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
       "League of Legends", // Title là tên trò chơi
       `**${member.user.tag}** đã bắt đầu chơi.`,
       0x00FF00, // Màu xanh lá
-      userId // Truyền userId để kiểm tra trạng thái webhook
+      userId
     );
   }
 
@@ -134,7 +131,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     user.startTime = Date.now();
     await user.save();
     sendToWebhook(
-      "League of Legends", // Title là tên trò chơi
+      "League of Legends",
       `**${member.user.tag}** đã bắt đầu chơi.`,
       0x00FF00, // Màu xanh lá
       userId // Truyền userId để kiểm tra trạng thái webhook
@@ -142,23 +139,19 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   }
 
   // Nếu người dùng không còn chơi Liên Minh Huyền Thoại
-  if (!isPlayingLol && user && user.playing) {
-    // Tính thời gian chơi và lưu lại
-    const playTime = calculatePlayTime(user.startTime); // Tính thời gian chơi
-    user.totalPlayTime += playTime; // Cộng thêm thời gian chơi vào tổng thời gian
-
-    user.playing = false; // Đánh dấu là không còn chơi nữa
-    await user.save();
-
-    // Gửi thông báo ngay lập tức sau khi tính tổng thời gian chơi
-    sendToWebhook(
-      "League of Legends", // Title là tên trò chơi
-      `**${member.user.tag}** đã kết thúc trò chơi. Tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`,
-      0xFF0000, // Màu đỏ
-      userId // Truyền userId để kiểm tra trạng thái webhook
-    );
-  }
-});
+if (!isPlayingLol && user && user.playing) {
+  const playTime = calculatePlayTime(user.startTime);
+  user.totalPlayTime += playTime;
+  user.playing = false;
+  user.startTime = null;
+  await user.save();
+  sendToWebhook(
+    "League of Legends",
+    `**${member.user.tag}** đã chơi **${playTime}** phút, tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`,
+    0xFF0000,
+    userId
+  );
+}
 
 // Tạo Express app
 const app = express();

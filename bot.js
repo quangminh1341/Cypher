@@ -120,7 +120,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     await user.save();
     sendToWebhook(
       "League of Legends", // Title là tên trò chơi
-      **${member.user.tag}** đã bắt đầu chơi.,
+      `**${member.user.tag}** đã bắt đầu chơi.`,
       0x00FF00, // Màu xanh lá
       userId
     );
@@ -133,7 +133,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     await user.save();
     sendToWebhook(
       "League of Legends",
-      **${member.user.tag}** đã bắt đầu chơi.,
+      `**${member.user.tag}** đã bắt đầu chơi.`,
       0x00FF00, // Màu xanh lá
       userId // Truyền userId để kiểm tra trạng thái webhook
     );
@@ -143,7 +143,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   if (!isPlayingLol && user && user.playing) {
     // Kiểm tra nếu startTime không tồn tại
     if (!user.startTime) {
-      console.error(startTime không được định nghĩa cho người dùng ${userId});
+      console.error(`startTime không được định nghĩa cho người dùng ${userId}`);
       return;
     }
 
@@ -154,7 +154,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     await user.save();
     sendToWebhook(
       "League of Legends",
-      **${member.user.tag}** đã chơi **${playTime}** phút, tổng thời gian đã chơi: **${user.totalPlayTime}** phút.,
+      `**${member.user.tag}** đã chơi **${playTime}** phút, tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`,
       0xFF0000, // Màu đỏ
       userId
     );

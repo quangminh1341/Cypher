@@ -219,11 +219,12 @@ app.listen(PORT, () => {
 // Đăng nhập bot vào Discord
 client.login(DISCORD_TOKEN);
 
-// Hàm gửi bảng xếp hạng
-let rankMessageId = null;  // Khai báo biến lưu ID của tin nhắn bảng xếp hạng
+// Khai báo biến lưu ID của tin nhắn bảng xếp hạng
+let rankMessageId = null;
 
 async function sendRankList(channel) {
   try {
+    // Tìm kiếm 10 người dùng có tổng thời gian chơi cao nhất
     const topUsers = await User.find({}).sort({ totalPlayTime: -1 }).limit(10);
 
     if (topUsers.length === 0) {
@@ -231,14 +232,20 @@ async function sendRankList(channel) {
       return;
     }
 
+    // Tạo danh sách bảng xếp hạng
     let rankList = '';
     topUsers.forEach((user, index) => {
       rankList += `**${index + 1}.** <@${user.userId}> - **${user.totalPlayTime}** phút\n`;
     });
 
-    // Lấy guild (server) và user có số phút cao nhất
+    // Lấy thông tin guild (server) từ Discord
     const guild = await client.guilds.fetch(guildId);
-    const topPlayer = topUsers[0]; // Người có số phút cao nhất
+    
+    // Lấy người chơi có số phút cao nhất
+    const topPlayer = topUsers[0]; 
+
+    // Lấy thông tin người dùng (User) từ Discord để lấy avatar
+    const topPlayerUser = await client.users.fetch(topPlayer.userId);  // Fetch user object
 
     // Tạo Embed cho bảng xếp hạng
     const embed = {
@@ -256,7 +263,7 @@ async function sendRankList(channel) {
             icon_url: guild.iconURL(), // Thêm icon của server vào footer
           },
           thumbnail: {
-            url: topPlayer.user.avatarURL(), // Avatar của người chơi có số phút cao nhất
+            url: topPlayerUser.avatarURL() || 'https://example.com/default-avatar.png', // Kiểm tra nếu không có avatar, dùng avatar mặc định
           },
         },
       ],
@@ -276,6 +283,7 @@ async function sendRankList(channel) {
     console.error('Error fetching rank:', error);
   }
 }
+
 
 // Lắng nghe tin nhắn mới để thực hiện các lệnh
 client.on('messageCreate', async (message) => {

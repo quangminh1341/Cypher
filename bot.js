@@ -9,7 +9,6 @@ dotenv.config();
 
 // Token của bot Discord và URL Webhook
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const MONGO_URI = process.env.MONGO_URI;
 
 // Tạo client Discord
@@ -43,45 +42,6 @@ const User = mongoose.model('User', userSchema);
 
 // Khai báo guildId mặc định
 let guildId = '747767032186929212'; // ID của máy chủ mặc định
-
-// Hàm gửi dữ liệu tới Webhook theo dạng Embed
-async function sendToWebhook(activityName, description, color, userId) {
-  try {
-    const embed = {
-      embeds: [
-        {
-          title: activityName,
-          description: description,
-          color: color,
-          footer: {
-            text: `${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`
-          },
-        }
-      ]
-    };
-
-    const response = await fetch(WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(embed),
-    });
-
-    if (!response.ok) {
-      console.error('Failed to send message to webhook:', response.statusText);
-    } else {
-      console.log('Message sent successfully to webhook');
-      
-      // Cập nhật trạng thái webhookSent khi gửi thành công
-      const user = await User.findOne({ userId });
-      if (user) {
-        user.webhookSent = true;
-        await user.save();
-      }
-    }
-  } catch (error) {
-    console.error('Error sending webhook:', error);
-  }
-}
 
 // Khi bot đã sẵn sàng
 client.once('ready', () => {
@@ -118,12 +78,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   if (isPlayingLol && !user) {
     user = new User({ userId, playing: true, startTime: Date.now(), totalPlayTime: 0 });
     await user.save();
-    sendToWebhook(
-      "League of Legends", // Title là tên trò chơi
-      `**${member.user.tag}** đã bắt đầu chơi.`,
-      0x00FF00, // Màu xanh lá
-      userId
-    );
+    sendToChannel(member, "League of Legends", `**${member.user.tag}** đã bắt đầu chơi.`, 0x00FF00);
   }
 
   // Nếu người dùng đã chơi Liên Minh Huyền Thoại và đã bắt đầu tính giờ
@@ -131,35 +86,43 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     user.playing = true;
     user.startTime = Date.now();
     await user.save();
-    sendToWebhook(
-      "League of Legends",
-      `**${member.user.tag}** đã bắt đầu chơi.`,
-      0x00FF00, // Màu xanh lá
-      userId // Truyền userId để kiểm tra trạng thái webhook
-    );
+    sendToChannel(member, "League of Legends", `**${member.user.tag}** đã bắt đầu chơi.`, 0x00FF00);
   }
 
   // Nếu người dùng không còn chơi Liên Minh Huyền Thoại
   if (!isPlayingLol && user && user.playing) {
-    // Kiểm tra nếu startTime không tồn tại
-    if (!user.startTime) {
-      console.error(`startTime không được định nghĩa cho người dùng ${userId}`);
-      return;
-    }
-
     const playTime = calculatePlayTime(user.startTime);
     user.totalPlayTime += playTime;
     user.playing = false;
     user.startTime = null;
     await user.save();
-    sendToWebhook(
-      "League of Legends",
-      `**${member.user.tag}** đã chơi **${playTime}** phút, tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`,
-      0xFF0000, // Màu đỏ
-      userId
-    );
+    sendToChannel(member, "League of Legends", `**${member.user.tag}** đã chơi **${playTime}** phút, tổng thời gian đã chơi: **${user.totalPlayTime}** phút.`, 0xFF0000);
   }
 });
+
+// Hàm gửi Embed vào kênh Discord
+async function sendToChannel(member, activityName, description, color) {
+  try {
+    const channel = await client.channels.fetch('1313481298504978543'); // ID của kênh nơi bạn muốn gửi tin nhắn
+
+    const embed = {
+      embeds: [
+        {
+          title: activityName,
+          description: description,
+          color: color,
+          footer: {
+            text: `${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`
+          },
+        }
+      ]
+    };
+
+    await channel.send(embed);  // Gửi Embed vào kênh
+  } catch (error) {
+    console.error('Error sending message to channel:', error);
+  }
+}
 
 // Tạo Express app
 const app = express();
@@ -238,15 +201,6 @@ async function sendRankList(channel) {
       rankList += `**${index + 1}.** <@${user.userId}> - **${user.totalPlayTime}** phút\n`;
     });
 
-    // Lấy thông tin guild (server) từ Discord
-    const guild = await client.guilds.fetch(guildId);
-    
-    // Lấy người chơi có số phút cao nhất
-    const topPlayer = topUsers[0]; 
-
-    // Lấy thông tin người dùng (User) từ Discord để lấy avatar
-    const topPlayerUser = await client.users.fetch(topPlayer.userId);  // Fetch user object
-
     // Tạo Embed cho bảng xếp hạng
     const embed = {
       embeds: [
@@ -254,35 +208,20 @@ async function sendRankList(channel) {
           description: rankList,
           color: 0x90f5e7, // Màu xanh lá
           author: {
-            name: `Top 10 Time Points Rank`, // Tên server
-            icon_url: guild.iconURL(), // Thêm icon của server vào author
+            name: `Top 10 Time Points Rank`,
           },
           footer: {
             text: `Cập nhật lúc: ${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
-            icon_url: guild.iconURL(), // Thêm icon của server vào footer
-          },
-          thumbnail: {
-            url: topPlayerUser.avatarURL() || 'https://example.com/default-avatar.png', // Kiểm tra nếu không có avatar, dùng avatar mặc định
           },
         },
       ],
     };
 
-    // Gửi bảng xếp hạng lần đầu tiên và lưu lại ID tin nhắn
-    if (!rankMessageId) {
-      const rankMessage = await channel.send(embed);
-      rankMessageId = rankMessage.id;  // Lưu lại ID tin nhắn
-    } else {
-      // Chỉnh sửa tin nhắn bảng xếp hạng đã gửi
-      const rankMessage = await channel.messages.fetch(rankMessageId);
-      rankMessage.edit(embed);  // Chỉnh sửa tin nhắn cũ
-    }
-
+    await channel.send(embed);  // Gửi bảng xếp hạng vào kênh
   } catch (error) {
     console.error('Error fetching rank:', error);
   }
 }
-
 
 // Lắng nghe tin nhắn mới để thực hiện các lệnh
 client.on('messageCreate', async (message) => {
@@ -309,6 +248,7 @@ client.on('messageCreate', async (message) => {
     const channel = message.channel;  // Lấy channel của tin nhắn đang được gửi
     await sendRankList(channel);  // Gửi bảng xếp hạng hoặc chỉnh sửa tin nhắn đã gửi
   }
+
   // Lệnh !deltimeall
   if (message.content === '!deltimeall') {
     // Kiểm tra xem người gửi có ID là 389350643090980869 hay không

@@ -42,10 +42,12 @@ const User = mongoose.model('User', userSchema);
 
 // Khai báo guildId mặc định
 let guildId = '747767032186929212'; // ID của máy chủ mặc định
+let notificationChannelId = '1313481298504978543'; // ID của kênh mặc định gửi thông báo
 
 // Khi bot đã sẵn sàng
 client.once('ready', () => {
   console.log('Bot is online!');
+  autoUpdateRankList();  // Gọi hàm tự động cập nhật bảng xếp hạng
 });
 
 // Hàm tính thời gian chơi (dưới dạng phút)
@@ -103,7 +105,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
 // Hàm gửi Embed vào kênh Discord
 async function sendToChannel(member, activityName, description, color) {
   try {
-    const channel = await client.channels.fetch('1313481298504978543'); // ID của kênh nơi bạn muốn gửi tin nhắn
+    const channel = await client.channels.fetch(notificationChannelId); // Lấy ID kênh từ biến notificationChannelId
 
     const embed = {
       embeds: [
@@ -173,6 +175,18 @@ app.post('/api/set-guild-id', (req, res) => {
   res.json({ message: `Guild ID đã được thay đổi thành ${guildId}` });
 });
 
+// API để thay đổi ID kênh gửi thông báo khi bắt đầu hoặc kết thúc trò chơi
+app.post('/api/set-notification-channel', (req, res) => {
+  const { newChannelId } = req.body;
+
+  if (!newChannelId || typeof newChannelId !== 'string') {
+    return res.status(400).json({ message: 'Invalid Channel ID' });
+  }
+
+  notificationChannelId = newChannelId;
+  res.json({ message: `ID kênh gửi thông báo đã được thay đổi thành ${notificationChannelId}` });
+});
+
 // Lắng nghe trên cổng mà Render cung cấp
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
@@ -185,6 +199,18 @@ client.login(DISCORD_TOKEN);
 // Khai báo biến lưu ID của tin nhắn bảng xếp hạng
 let rankMessageId = null;
 
+// Hàm tự động cập nhật bảng xếp hạng mỗi 10 phút
+async function autoUpdateRankList() {
+  const channelId = '1313481298504978543'; // ID của kênh nơi bảng xếp hạng sẽ được gửi vào
+  const channel = await client.channels.fetch(channelId);
+
+  setInterval(async () => {
+    console.log("Cập nhật bảng xếp hạng...");
+    await sendRankList(channel);
+  }, 10 * 60 * 1000); // 10 phút = 10 * 60 * 1000 ms
+}
+
+// Hàm gửi bảng xếp hạng
 async function sendRankList(channel) {
   try {
     // Tìm kiếm 10 người dùng có tổng thời gian chơi cao nhất
@@ -201,16 +227,16 @@ async function sendRankList(channel) {
       rankList += `**${index + 1}.** <@${user.userId}> - **${user.totalPlayTime}** phút\n`;
     });
 
-// Lấy thông tin guild (server) từ Discord
+    // Lấy thông tin guild (server) từ Discord
     const guild = await client.guilds.fetch(guildId);
-    
+
     // Lấy thông tin người chơi có số phút cao nhất
-    const topPlayer = topUsers[0]; 
+    const topPlayer = topUsers[0];
 
     // Lấy thông tin người dùng (User) từ Discord để lấy avatar
     const topPlayerUser = await client.users.fetch(topPlayer.userId);  // Fetch user object
-    
- // Lấy avatar của server (guild) và bot
+
+    // Lấy avatar của server (guild) và bot
     const guildIcon = guild.iconURL();  // Icon của server
     const botAvatar = client.user.avatarURL();  // Icon của bot
     const topPlayerAvatar = topPlayerUser.avatarURL(); // Icon của người chơi có số điểm cao nhất
@@ -244,24 +270,6 @@ async function sendRankList(channel) {
 
 // Lắng nghe tin nhắn mới để thực hiện các lệnh
 client.on('messageCreate', async (message) => {
-  // Lệnh !verify
-  if (message.content === '!verify') {
-    try {
-      const response = await fetch('https://cypher-omu8.onrender.com/api/ip');
-      const data = await response.json();
-      const userIp = data.ip;
-
-      if (userIp === '121.151.78.34') {
-        message.reply('Hoàn tất');
-      } else {
-        message.reply(`IP của bạn không khớp. IP hiện tại của bạn là ${userIp}`);
-      }
-    } catch (error) {
-      console.error('Error fetching user IP:', error);
-      message.reply('Đã có lỗi khi xác thực.');
-    }
-  }
-
   // Lệnh !ranktime
   if (message.content === '!ranktime') {
     const channel = message.channel;  // Lấy channel của tin nhắn đang được gửi

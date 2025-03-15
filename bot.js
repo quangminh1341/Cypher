@@ -1,5 +1,4 @@
 import { Client, GatewayIntentBits } from 'discord.js';
-import fetch from 'node-fetch';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import express from 'express';
@@ -42,6 +41,10 @@ const User = mongoose.model('User', userSchema);
 
 // Khai báo guildId mặc định
 let guildId = '747767032186929212'; // ID của máy chủ mặc định
+
+// Khai báo các biến lưu ID của tin nhắn bảng xếp hạng và ID của kênh
+let rankMessageId = null;
+let rankChannelId = null;
 
 // Khi bot đã sẵn sàng
 client.once('ready', () => {
@@ -183,10 +186,7 @@ app.listen(PORT, () => {
 // Đăng nhập bot vào Discord
 client.login(DISCORD_TOKEN);
 
-// Khai báo các biến lưu ID của tin nhắn bảng xếp hạng và ID của kênh
-let rankMessageId = null;
-let rankChannelId = null;
-
+// Hàm gửi bảng xếp hạng
 async function sendRankList(channel) {
   try {
     // Tìm kiếm 10 người dùng có tổng thời gian chơi cao nhất
@@ -290,10 +290,4 @@ client.on('messageCreate', async (message) => {
     const channel = message.channel;  // Lấy kênh của tin nhắn đang được gửi
     await sendRankList(channel);  // Gửi bảng xếp hạng hoặc chỉnh sửa tin nhắn đã gửi
   }
-});
-
-// Sau khi bot login thành công, bạn có thể gọi autoUpdateRankList để tự động cập nhật bảng xếp hạng
-client.once('ready', () => {
-  console.log('Bot is online!');
-  autoUpdateRankList();  // Bắt đầu tự động cập nhật bảng xếp hạng mỗi 10 phút
 });

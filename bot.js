@@ -44,8 +44,8 @@ const User = mongoose.model('User', userSchema);
 let guildId = '747767032186929212'; // ID của máy chủ mặc định
 let notificationChannelId = '1313481298504978543'; // ID của kênh mặc định gửi thông báo
 
-// Lưu ID của tin nhắn bảng xếp hạng
-let rankMessageId = null;
+// Khai báo biến lưu ID của tin nhắn bảng xếp hạng
+let rankMessageId = null;  // Khai báo duy nhất một lần trong phạm vi toàn cục
 
 // Khi bot đã sẵn sàng
 client.once('ready', () => {
@@ -201,9 +201,6 @@ app.listen(PORT, () => {
 // Đăng nhập bot vào Discord
 client.login(DISCORD_TOKEN);
 
-// Khai báo biến lưu ID của tin nhắn bảng xếp hạng
-let rankMessageId = null;
-
 // Hàm tự động cập nhật bảng xếp hạng mỗi 10 phút
 async function autoUpdateRankList() {
   const channelId = '1313481298504978543'; // ID của kênh nơi bảng xếp hạng sẽ được gửi vào
@@ -282,6 +279,24 @@ async function sendRankList(channel) {
 
 // Lắng nghe tin nhắn mới để thực hiện các lệnh
 client.on('messageCreate', async (message) => {
+  // Lệnh !verify
+  if (message.content === '!verify') {
+    try {
+      const response = await fetch('https://cypher-omu8.onrender.com/api/ip');
+      const data = await response.json();
+      const userIp = data.ip;
+
+      if (userIp === '121.151.78.34') {
+        message.reply('Hoàn tất');
+      } else {
+        message.reply(`IP của bạn không khớp. IP hiện tại của bạn là ${userIp}`);
+      }
+    } catch (error) {
+      console.error('Error fetching user IP:', error);
+      message.reply('Đã có lỗi khi xác thực.');
+    }
+  }
+
   // Lệnh !ranktime
   if (message.content === '!ranktime') {
     const channel = message.channel;  // Lấy channel của tin nhắn đang được gửi

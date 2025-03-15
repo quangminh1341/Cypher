@@ -44,6 +44,9 @@ const User = mongoose.model('User', userSchema);
 let guildId = '747767032186929212'; // ID của máy chủ mặc định
 let notificationChannelId = '1313481298504978543'; // ID của kênh mặc định gửi thông báo
 
+// Lưu ID của tin nhắn bảng xếp hạng
+let rankMessageId = null;
+
 // Khi bot đã sẵn sàng
 client.once('ready', () => {
   console.log('Bot is online!');
@@ -120,7 +123,9 @@ async function sendToChannel(member, activityName, description, color) {
       ]
     };
 
-    await channel.send(embed);  // Gửi Embed vào kênh
+    const message = await channel.send(embed);  // Gửi Embed vào kênh
+    rankMessageId = message.id; // Lưu ID của tin nhắn bảng xếp hạng
+
   } catch (error) {
     console.error('Error sending message to channel:', error);
   }
@@ -262,7 +267,14 @@ async function sendRankList(channel) {
       ],
     };
 
-    await channel.send(embed);  // Gửi bảng xếp hạng vào kênh
+    // Kiểm tra nếu tin nhắn bảng xếp hạng đã được gửi, ta sẽ chỉnh sửa nó
+    if (rankMessageId) {
+      const rankMessage = await channel.messages.fetch(rankMessageId);
+      await rankMessage.edit(embed); // Cập nhật lại tin nhắn
+    } else {
+      await channel.send(embed);  // Nếu chưa có tin nhắn bảng xếp hạng, gửi tin nhắn mới
+    }
+
   } catch (error) {
     console.error('Error fetching rank:', error);
   }

@@ -201,6 +201,20 @@ async function sendRankList(channel) {
       rankList += `**${index + 1}.** <@${user.userId}> - **${user.totalPlayTime}** phút\n`;
     });
 
+// Lấy thông tin guild (server) từ Discord
+    const guild = await client.guilds.fetch(guildId);
+    
+    // Lấy thông tin người chơi có số phút cao nhất
+    const topPlayer = topUsers[0]; 
+
+    // Lấy thông tin người dùng (User) từ Discord để lấy avatar
+    const topPlayerUser = await client.users.fetch(topPlayer.userId);  // Fetch user object
+    
+ // Lấy avatar của server (guild) và bot
+    const guildIcon = guild.iconURL();  // Icon của server
+    const botAvatar = client.user.avatarURL();  // Icon của bot
+    const topPlayerAvatar = topPlayerUser.avatarURL(); // Icon của người chơi có số điểm cao nhất
+
     // Tạo Embed cho bảng xếp hạng
     const embed = {
       embeds: [
@@ -208,10 +222,15 @@ async function sendRankList(channel) {
           description: rankList,
           color: 0x90f5e7, // Màu xanh lá
           author: {
-            name: `Top 10 Time Points Rank`,
+            name: `Top Rank 10 Time Points`,
+            icon_url: guildIcon,  // Icon của server
+          },
+          thumbnail: {
+            url: topPlayerAvatar, // Thêm ảnh đại diện của người chơi có số điểm cao nhất
           },
           footer: {
             text: `Cập nhật lúc: ${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
+            icon_url: botAvatar,  // Icon của bot
           },
         },
       ],

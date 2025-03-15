@@ -294,8 +294,9 @@ async function autoUpdateRankList() {
     return;
   }
   
-  async function autoUpdateRankList() {
+async function autoUpdateRankList() {
   if (rankUpdateInterval) clearInterval(rankUpdateInterval);
+}
 
   const channel = await client.channels.fetch(rankChannelId); // Lấy kênh từ ID đã lưu
   setInterval(async () => {

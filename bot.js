@@ -46,6 +46,7 @@ let guildId = '747767032186929212'; // ID của máy chủ mặc định
 // Khi bot đã sẵn sàng
 client.once('ready', () => {
   console.log('Bot is online!');
+  autoUpdateRankList();  // Bắt đầu tự động cập nhật bảng xếp hạng mỗi 10 phút
 });
 
 // Hàm tính thời gian chơi (dưới dạng phút)
@@ -182,8 +183,9 @@ app.listen(PORT, () => {
 // Đăng nhập bot vào Discord
 client.login(DISCORD_TOKEN);
 
-// Khai báo biến lưu ID của tin nhắn bảng xếp hạng
+// Khai báo các biến lưu ID của tin nhắn bảng xếp hạng và ID của kênh
 let rankMessageId = null;
+let rankChannelId = null;
 
 async function sendRankList(channel) {
   try {
@@ -254,6 +256,7 @@ async function sendRankList(channel) {
       console.log('Chưa có tin nhắn bảng xếp hạng, gửi tin nhắn mới...');
       const newMessage = await channel.send(embed);
       rankMessageId = newMessage.id;  // Lưu ID của tin nhắn mới
+      rankChannelId = channel.id;  // Lưu ID của kênh
     }
 
   } catch (error) {
@@ -263,18 +266,34 @@ async function sendRankList(channel) {
 
 // Hàm tự động cập nhật bảng xếp hạng mỗi 10 phút
 async function autoUpdateRankList() {
-  const channel = await client.channels.fetch('1313481298504978543'); // ID của kênh nơi bảng xếp hạng sẽ được gửi vào
-  
+  if (!rankChannelId || !rankMessageId) {
+    console.log("Chưa có ID kênh hoặc ID tin nhắn để cập nhật.");
+    return;
+  }
+
+  const channel = await client.channels.fetch(rankChannelId); // Lấy kênh từ ID đã lưu
   setInterval(async () => {
     console.log("Cập nhật bảng xếp hạng...");
-    await sendRankList(channel);
+    // Cập nhật bảng xếp hạng vào tin nhắn đã gửi trước đó
+    const rankMessage = await channel.messages.fetch(rankMessageId);
+    if (rankMessage) {
+      await sendRankList(channel);  // Cập nhật bảng xếp hạng vào tin nhắn này
+    } else {
+      console.log("Không tìm thấy tin nhắn để cập nhật.");
+    }
   }, 10 * 60 * 1000); // 10 phút = 10 * 60 * 1000 ms
 }
 
 // Lắng nghe tin nhắn mới để thực hiện lệnh
 client.on('messageCreate', async (message) => {
   if (message.content === '!ranktime') {
-    const channel = message.channel;  // Lấy channel của tin nhắn đang được gửi
+    const channel = message.channel;  // Lấy kênh của tin nhắn đang được gửi
     await sendRankList(channel);  // Gửi bảng xếp hạng hoặc chỉnh sửa tin nhắn đã gửi
   }
+});
+
+// Sau khi bot login thành công, bạn có thể gọi autoUpdateRankList để tự động cập nhật bảng xếp hạng
+client.once('ready', () => {
+  console.log('Bot is online!');
+  autoUpdateRankList();  // Bắt đầu tự động cập nhật bảng xếp hạng mỗi 10 phút
 });

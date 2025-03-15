@@ -164,6 +164,29 @@ app.get('/api/user/:userId', async (req, res) => {
     res.status(500).json({ message: 'Internal server error', error });
   }
 });
+// API để thay đổi ID kênh gửi tin nhắn
+app.post('/api/set-channel-id', async (req, res) => {
+  const { newChannelId } = req.body;
+
+  if (!newChannelId || typeof newChannelId !== 'string') {
+    return res.status(400).json({ message: 'Invalid Channel ID' });
+  }
+
+  try {
+    // Kiểm tra kênh Discord có hợp lệ hay không
+    const channel = await client.channels.fetch(newChannelId);
+    if (!channel) {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+
+    // Cập nhật channelId
+    channelId = newChannelId;  // Thay đổi giá trị channelId
+
+    return res.json({ message: `Channel ID đã được thay đổi thành ${channelId}` });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error fetching channel', error });
+  }
+});
 
 // API để thay đổi ID của máy chủ
 app.post('/api/set-guild-id', (req, res) => {

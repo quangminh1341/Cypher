@@ -293,6 +293,9 @@ async function autoUpdateRankList() {
     console.log("Chưa có ID kênh hoặc ID tin nhắn để cập nhật.");
     return;
   }
+  
+  async function autoUpdateRankList() {
+  if (rankUpdateInterval) clearInterval(rankUpdateInterval);
 
   const channel = await client.channels.fetch(rankChannelId); // Lấy kênh từ ID đã lưu
   setInterval(async () => {

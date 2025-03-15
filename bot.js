@@ -42,15 +42,10 @@ const User = mongoose.model('User', userSchema);
 
 // Khai báo guildId mặc định
 let guildId = '747767032186929212'; // ID của máy chủ mặc định
-let notificationChannelId = '1313481298504978543'; // ID của kênh mặc định gửi thông báo
-
-// Khai báo biến lưu ID của tin nhắn bảng xếp hạng
-let rankMessageId = null;  // Khai báo duy nhất một lần trong phạm vi toàn cục
 
 // Khi bot đã sẵn sàng
 client.once('ready', () => {
   console.log('Bot is online!');
-  autoUpdateRankList();  // Gọi hàm tự động cập nhật bảng xếp hạng
 });
 
 // Hàm tính thời gian chơi (dưới dạng phút)
@@ -108,7 +103,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
 // Hàm gửi Embed vào kênh Discord
 async function sendToChannel(member, activityName, description, color) {
   try {
-    const channel = await client.channels.fetch(notificationChannelId); // Lấy ID kênh từ biến notificationChannelId
+    const channel = await client.channels.fetch('1313481298504978543'); // ID của kênh nơi bạn muốn gửi tin nhắn
 
     const embed = {
       embeds: [
@@ -123,9 +118,7 @@ async function sendToChannel(member, activityName, description, color) {
       ]
     };
 
-    const message = await channel.send(embed);  // Gửi Embed vào kênh
-    rankMessageId = message.id; // Lưu ID của tin nhắn bảng xếp hạng
-
+    await channel.send(embed);  // Gửi Embed vào kênh
   } catch (error) {
     console.error('Error sending message to channel:', error);
   }
@@ -180,18 +173,6 @@ app.post('/api/set-guild-id', (req, res) => {
   res.json({ message: `Guild ID đã được thay đổi thành ${guildId}` });
 });
 
-// API để thay đổi ID kênh gửi thông báo khi bắt đầu hoặc kết thúc trò chơi
-app.post('/api/set-notification-channel', (req, res) => {
-  const { newChannelId } = req.body;
-
-  if (!newChannelId || typeof newChannelId !== 'string') {
-    return res.status(400).json({ message: 'Invalid Channel ID' });
-  }
-
-  notificationChannelId = newChannelId;
-  res.json({ message: `ID kênh gửi thông báo đã được thay đổi thành ${notificationChannelId}` });
-});
-
 // Lắng nghe trên cổng mà Render cung cấp
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
@@ -201,18 +182,9 @@ app.listen(PORT, () => {
 // Đăng nhập bot vào Discord
 client.login(DISCORD_TOKEN);
 
-// Hàm tự động cập nhật bảng xếp hạng mỗi 10 phút
-async function autoUpdateRankList() {
-  const channelId = '1313481298504978543'; // ID của kênh nơi bảng xếp hạng sẽ được gửi vào
-  const channel = await client.channels.fetch(channelId);
+// Khai báo biến lưu ID của tin nhắn bảng xếp hạng
+let rankMessageId = null;
 
-  setInterval(async () => {
-    console.log("Cập nhật bảng xếp hạng...");
-    await sendRankList(channel);
-  }, 10 * 60 * 1000); // 10 phút = 10 * 60 * 1000 ms
-}
-
-// Hàm gửi bảng xếp hạng
 async function sendRankList(channel) {
   try {
     // Tìm kiếm 10 người dùng có tổng thời gian chơi cao nhất
@@ -266,59 +238,43 @@ async function sendRankList(channel) {
 
     // Kiểm tra nếu tin nhắn bảng xếp hạng đã được gửi, ta sẽ chỉnh sửa nó
     if (rankMessageId) {
-      const rankMessage = await channel.messages.fetch(rankMessageId);
-      await rankMessage.edit(embed); // Cập nhật lại tin nhắn
+      try {
+        const rankMessage = await channel.messages.fetch(rankMessageId);
+        if (rankMessage) {
+          console.log('Đang cập nhật bảng xếp hạng...');
+          await rankMessage.edit(embed); // Cập nhật lại tin nhắn
+        } else {
+          console.log('Không tìm thấy tin nhắn để cập nhật.');
+        }
+      } catch (error) {
+        console.error('Lỗi khi chỉnh sửa tin nhắn:', error);
+      }
     } else {
-      await channel.send(embed);  // Nếu chưa có tin nhắn bảng xếp hạng, gửi tin nhắn mới
+      // Nếu chưa có tin nhắn bảng xếp hạng, gửi tin nhắn mới và lưu ID
+      console.log('Chưa có tin nhắn bảng xếp hạng, gửi tin nhắn mới...');
+      const newMessage = await channel.send(embed);
+      rankMessageId = newMessage.id;  // Lưu ID của tin nhắn mới
     }
 
   } catch (error) {
-    console.error('Error fetching rank:', error);
+    console.error('Lỗi khi lấy bảng xếp hạng:', error);
   }
 }
 
-// Lắng nghe tin nhắn mới để thực hiện các lệnh
+// Hàm tự động cập nhật bảng xếp hạng mỗi 10 phút
+async function autoUpdateRankList() {
+  const channel = await client.channels.fetch('1313481298504978543'); // ID của kênh nơi bảng xếp hạng sẽ được gửi vào
+  
+  setInterval(async () => {
+    console.log("Cập nhật bảng xếp hạng...");
+    await sendRankList(channel);
+  }, 10 * 60 * 1000); // 10 phút = 10 * 60 * 1000 ms
+}
+
+// Lắng nghe tin nhắn mới để thực hiện lệnh
 client.on('messageCreate', async (message) => {
-  // Lệnh !verify
-  if (message.content === '!verify') {
-    try {
-      const response = await fetch('https://cypher-omu8.onrender.com/api/ip');
-      const data = await response.json();
-      const userIp = data.ip;
-
-      if (userIp === '121.151.78.34') {
-        message.reply('Hoàn tất');
-      } else {
-        message.reply(`IP của bạn không khớp. IP hiện tại của bạn là ${userIp}`);
-      }
-    } catch (error) {
-      console.error('Error fetching user IP:', error);
-      message.reply('Đã có lỗi khi xác thực.');
-    }
-  }
-
-  // Lệnh !ranktime
   if (message.content === '!ranktime') {
     const channel = message.channel;  // Lấy channel của tin nhắn đang được gửi
     await sendRankList(channel);  // Gửi bảng xếp hạng hoặc chỉnh sửa tin nhắn đã gửi
-  }
-
-  // Lệnh !deltimeall
-  if (message.content === '!deltimeall') {
-    // Kiểm tra xem người gửi có ID là 389350643090980869 hay không
-    if (message.author.id !== '389350643090980869') {
-      return message.reply('Bạn không có quyền sử dụng lệnh này.');
-    }
-
-    try {
-      // Xóa dữ liệu tổng thời gian chơi của tất cả người dùng
-      await User.updateMany({}, { $set: { totalPlayTime: 0 } });
-
-      // Gửi thông báo đã xóa thành công
-      message.reply('Đã xóa tổng thời gian chơi của tất cả người dùng.');
-    } catch (error) {
-      console.error('Error while clearing total play time:', error);
-      message.reply('Có lỗi xảy ra khi xóa dữ liệu.');
-    }
   }
 });

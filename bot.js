@@ -49,7 +49,6 @@ let rankChannelId = null;
 // Khi bot đã sẵn sàng
 client.once('ready', () => {
   console.log('Bot is online!');
-  autoUpdateRankList();  // Bắt đầu tự động cập nhật bảng xếp hạng mỗi 10 phút
 });
 
 // Hàm tính thời gian chơi (dưới dạng phút)
@@ -209,112 +208,33 @@ app.listen(PORT, () => {
 // Đăng nhập bot vào Discord
 client.login(DISCORD_TOKEN);
 
-// Hàm gửi bảng xếp hạng
-async function sendRankList(channel) {
+// API để lấy bảng xếp hạng 10 người chơi có tổng thời gian chơi cao nhất
+app.get('/api/leaderboard', async (req, res) => {
   try {
-    // Tìm kiếm 10 người dùng có tổng thời gian chơi cao nhất
+    // Lấy danh sách 10 người có tổng thời gian chơi cao nhất
     const topUsers = await User.find({}).sort({ totalPlayTime: -1 }).limit(10);
 
     if (topUsers.length === 0) {
-      console.log('Không có dữ liệu người dùng.');
-      return;
+      return res.status(404).json({ message: "Không có dữ liệu người dùng." });
     }
-
-    // Tạo danh sách bảng xếp hạng
-    let rankList = '';
-    topUsers.forEach((user, index) => {
-      rankList += `**${index + 1}.** <@${user.userId}> - **${user.totalPlayTime}** phút\n`;
-    });
-
-    // Lấy thông tin guild (server) từ Discord
-    const guild = await client.guilds.fetch(guildId);
 
     // Lấy thông tin người chơi có số phút cao nhất
     const topPlayer = topUsers[0];
+    const topPlayerUser = await client.users.fetch(topPlayer.userId);
+    const topPlayerAvatar = topPlayerUser.avatarURL();
 
-    // Lấy thông tin người dùng (User) từ Discord để lấy avatar
-    const topPlayerUser = await client.users.fetch(topPlayer.userId);  // Fetch user object
+    // Chuẩn bị dữ liệu bảng xếp hạng dưới dạng Markdown
+    const leaderboardText = topUsers
+      .map(
+        (user, index) => `**${index + 1}.** <@${user.userId}> - **${user.totalPlayTime}** phút`
+      )
+      .join("\n");
 
-    // Lấy avatar của server (guild) và bot
-    const guildIcon = guild.iconURL();  // Icon của server
-    const botAvatar = client.user.avatarURL();  // Icon của bot
-    const topPlayerAvatar = topPlayerUser.avatarURL(); // Icon của người chơi có số điểm cao nhất
-
-    // Tạo Embed cho bảng xếp hạng
-    const embed = {
-      embeds: [
-        {
-          description: rankList,
-          color: 0x90f5e7, // Màu xanh lá
-          author: {
-            name: `Top Rank 10 Time Points`,
-            icon_url: guildIcon,  // Icon của server
-          },
-          thumbnail: {
-            url: topPlayerAvatar, // Thêm ảnh đại diện của người chơi có số điểm cao nhất
-          },
-          footer: {
-            text: `Cập nhật lúc: ${new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
-            icon_url: botAvatar,  // Icon của bot
-          },
-        },
-      ],
-    };
-
-    // Kiểm tra nếu tin nhắn bảng xếp hạng đã được gửi, ta sẽ chỉnh sửa nó
-    if (rankMessageId) {
-      try {
-        const rankMessage = await channel.messages.fetch(rankMessageId);
-        if (rankMessage) {
-          console.log('Đang cập nhật bảng xếp hạng...');
-          await rankMessage.edit(embed); // Cập nhật lại tin nhắn
-        } else {
-          console.log('Không tìm thấy tin nhắn để cập nhật.');
-        }
-      } catch (error) {
-        console.error('Lỗi khi chỉnh sửa tin nhắn:', error);
-      }
-    } else {
-      // Nếu chưa có tin nhắn bảng xếp hạng, gửi tin nhắn mới và lưu ID
-      console.log('Chưa có tin nhắn bảng xếp hạng, gửi tin nhắn mới...');
-      const newMessage = await channel.send(embed);
-      rankMessageId = newMessage.id;  // Lưu ID của tin nhắn mới
-      rankChannelId = channel.id;  // Lưu ID của kênh
-    }
-
+    res.json({
+      leaderboard: leaderboardText,
+      topPlayerIcon: topPlayerAvatar,
+    });
   } catch (error) {
-    console.error('Lỗi khi lấy bảng xếp hạng:', error);
-  }
-}
-
-// Hàm tự động cập nhật bảng xếp hạng mỗi 10 phút
-async function autoUpdateRankList() {
-  if (!rankChannelId || !rankMessageId) {
-    console.log("Chưa có ID kênh hoặc ID tin nhắn để cập nhật.");
-    return;
-  }
-  
-async function autoUpdateRankList() {
-  if (rankUpdateInterval) clearInterval(rankUpdateInterval);
-}
-
-  const channel = await client.channels.fetch(rankChannelId); // Lấy kênh từ ID đã lưu
-  setInterval(async () => {
-    console.log("Cập nhật bảng xếp hạng...");
-    // Cập nhật bảng xếp hạng vào tin nhắn đã gửi trước đó
-    const rankMessage = await channel.messages.fetch(rankMessageId);
-    if (rankMessage) {
-      await sendRankList(channel);  // Cập nhật bảng xếp hạng vào tin nhắn này
-    } else {
-      console.log("Không tìm thấy tin nhắn để cập nhật.");
-    }
-  }, 10 * 60 * 1000); // 10 phút = 10 * 60 * 1000 ms
-}
-
-// Lắng nghe tin nhắn mới để thực hiện lệnh
-client.on('messageCreate', async (message) => {
-  if (message.content === '!ranktime') {
-    const channel = message.channel;  // Lấy kênh của tin nhắn đang được gửi
-    await sendRankList(channel);  // Gửi bảng xếp hạng hoặc chỉnh sửa tin nhắn đã gửi
+    res.status(500).json({ message: "Lỗi khi lấy bảng xếp hạng.", error });
   }
 });

@@ -226,13 +226,16 @@ app.get('/api/leaderboard', async (req, res) => {
     // Chuẩn bị dữ liệu bảng xếp hạng dưới dạng Markdown
     const leaderboardText = topUsers
       .map(
-        (user, index) => `**${index + 1}.** <@${user.userId}> - **${user.totalPlayTime}** phút`
+        (user, index) => `**${index + 1}.** <@${user.userId}>: **${user.totalPlayTime}** phút`
       )
       .join("\n");
+
+    const updatedTime = new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 
     res.json({
       leaderboard: leaderboardText,
       topPlayerIcon: topPlayerAvatar,
+      updatedTime: updatedTime
     });
   } catch (error) {
     res.status(500).json({ message: "Lỗi khi lấy bảng xếp hạng.", error });

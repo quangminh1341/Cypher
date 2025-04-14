@@ -138,42 +138,27 @@ app.get('/api/leaderboard', async (req, res) => {
     const response = await fetch(`${SHEET_API_URL}?action=leaderboard`);
     const data = await response.json();
 
-    // Kiểm tra dữ liệu hợp lệ
-    if (!Array.isArray(data) || data.length === 0) {
+    if (!data || data.length === 0) {
       return res.status(404).json({ message: "Không có dữ liệu bảng xếp hạng." });
     }
 
-    // Lọc và ép kiểu để đảm bảo totalPlayTime là số
-    const topUsers = data
-      .map(user => ({
-        ...user,
-        totalPlayTime: Number(user.totalPlayTime) || 0
-      }))
-      .sort((a, b) => b.totalPlayTime - a.totalPlayTime)
-      .slice(0, 10);
-
+    // Lấy thông tin người chơi có số phút cao nhất
+    const topUsers = data.slice(0, 10);
     const topPlayer = topUsers[0];
-
-    // Lấy avatar của người chơi top 1 (nếu có)
     let topPlayerAvatar = null;
+
     try {
       const topPlayerUser = await client.users.fetch(topPlayer.userId);
-      topPlayerAvatar = topPlayerUser.avatarURL();
+      topPlayerAvatar = topPlayerUser.displayAvatarURL();
     } catch (fetchError) {
-      console.warn('Không thể lấy avatar người chơi top:', topPlayer.userId);
+      console.warn("Không lấy được avatar người đứng đầu:", fetchError.message);
     }
 
-    // Tạo chuỗi bảng xếp hạng
     const leaderboardText = topUsers
-      .map(
-        (user, index) =>
-          `**${index + 1}.** <@${user.userId}>: **${user.totalPlayTime}** phút`
-      )
+      .map((user, index) => `**${index + 1}.** <@${user.userId}>: **${user.totalPlayTime}** phút`)
       .join("\n");
 
-    const updatedTime = new Date().toLocaleString('vi-VN', {
-      timeZone: 'Asia/Ho_Chi_Minh'
-    });
+    const updatedTime = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 
     res.json({
       leaderboard: leaderboardText,
@@ -181,8 +166,8 @@ app.get('/api/leaderboard', async (req, res) => {
       updatedTime: updatedTime
     });
   } catch (error) {
-    console.error('Lỗi khi lấy bảng xếp hạng:', error);
-    res.status(500).json({ message: 'Lỗi khi lấy bảng xếp hạng', error });
+    console.error("Lỗi khi gọi Google Sheet:", error);
+    res.status(500).json({ message: "Lỗi khi lấy bảng xếp hạng.", error });
   }
 });
 

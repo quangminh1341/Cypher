@@ -147,4 +147,47 @@ app.get('/api/leaderboard', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Bot API đang chạy trên port ${PORT}`));
 
+// API: Lấy thông tin người dùng
+app.get('/api/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const response = await axios.get(`${SHEET_API}?action=getUser&userId=${userId}`);
+    if (response.data?.userId) {
+      res.json({
+        userId: response.data.userId,
+        totalPlayTime: response.data.totalPlayTime,
+        playing: response.data.playing,
+        startTime: response.data.startTime
+      });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Lỗi server khi lấy thông tin người dùng', error });
+  }
+});
+
+// API: Cập nhật thông tin người dùng (giống save)
+app.post('/api/save-user', async (req, res) => {
+  const { userId, playing, startTime, totalPlayTime } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ message: 'Thiếu userId' });
+  }
+
+  try {
+    await axios.post(SHEET_API, {
+      userId,
+      playing,
+      startTime,
+      totalPlayTime
+    });
+    res.json({ message: 'Đã lưu thông tin người dùng' });
+  } catch (error) {
+    res.status(500).json({ message: 'Lỗi server khi lưu thông tin người dùng', error });
+  }
+});
+
+
 client.login(DISCORD_TOKEN);

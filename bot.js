@@ -170,6 +170,17 @@ app.post('/api/save-user', async (req, res) => {
   }
 });
 
+client.on('messageCreate', async message => {
+  // Bỏ qua tin nhắn từ bot
+  if (message.author.bot) return;
+
+  if (message.content === '!checkid') {
+    return message.channel.send(
+      `**Guild ID:** ${guildId}\n**Channel ID:** ${channelId}`
+    );
+  }
+});
+
 // Server chạy trên Render hoặc localhost
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Bot API đang chạy trên port ${PORT}`));

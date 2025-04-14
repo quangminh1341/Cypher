@@ -170,8 +170,34 @@ app.post('/api/save-user', async (req, res) => {
   }
 });
 
+// API cập nhật Guild ID
+app.post('/api/update-guild-id', (req, res) => {
+  const { newGuildId } = req.body;
+
+  if (!newGuildId) {
+    return res.status(400).json({ message: 'Guild ID không được để trống' });
+  }
+
+  guildId = newGuildId;
+
+  res.json({ message: `Cập nhật thành công Guild ID: ${guildId}` });
+});
+
+// API cập nhật Channel ID
+app.post('/api/update-channel-id', (req, res) => {
+  const { newChannelId } = req.body;
+
+  if (!newChannelId) {
+    return res.status(400).json({ message: 'Channel ID không được để trống' });
+  }
+
+  channelId = newChannelId;
+
+  res.json({ message: `Cập nhật thành công Channel ID: ${channelId}` });
+});
+
+// Lệnh kiểm tra Guild ID và Channel ID
 client.on('messageCreate', async message => {
-  // Bỏ qua tin nhắn từ bot
   if (message.author.bot) return;
 
   if (message.content === '!checkid') {

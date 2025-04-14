@@ -1,12 +1,11 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import dotenv from 'dotenv';
-import axios from 'axios';
 import express from 'express';
 
 dotenv.config();
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const SHEET_API = process.env.SHEET_API_URL;
+const SHEET_API_URL = process.env.SHEET_API_URL; // URL đến Google Apps Script
 
 const client = new Client({
   intents: [
@@ -38,43 +37,48 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   const userId = member.user.id;
   const displayName = member.displayName;
 
-  console.log('Member Info:', member);
-  console.log('Display Name:', displayName);
-
   const isPlayingLol = newPresence.activities.some(act => act.name === "League of Legends");
   const isInLobby = newPresence.activities.some(act => ["In Lobby", "Đang trong sảnh chờ", "Đang tìm trận"].includes(act.state));
   if (isInLobby) return;
 
   let user;
   try {
-    const res = await axios.get(`${SHEET_API}?action=getUser&userId=${userId}`);
-    user = res.data;
+    const res = await fetch(`${SHEET_API_URL}?action=getUser&userId=${userId}`);
+    user = await res.json();
   } catch (err) {
     user = null;
   }
 
   if (isPlayingLol && !user?.userId) {
-    await axios.post(SHEET_API, {
-      userId,
-      playing: true,
-      startTime: Date.now(),
-      totalPlayTime: 0,
-      guildId,
-      channelId,
-      displayName
+    await fetch(SHEET_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        playing: true,
+        startTime: Date.now(),
+        totalPlayTime: 0,
+        guildId,
+        channelId,
+        displayName
+      })
     });
     sendToChannel(member, "League of Legends", `**${member.user.tag}** đã bắt đầu chơi.`, 0x00FF00);
   }
 
   if (isPlayingLol && user && !user.playing) {
-    await axios.post(SHEET_API, {
-      userId,
-      playing: true,
-      startTime: Date.now(),
-      totalPlayTime: user.totalPlayTime,
-      guildId,
-      channelId,
-      displayName
+    await fetch(SHEET_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        playing: true,
+        startTime: Date.now(),
+        totalPlayTime: user.totalPlayTime,
+        guildId,
+        channelId,
+        displayName
+      })
     });
     sendToChannel(member, "League of Legends", `**${member.user.tag}** đã bắt đầu chơi.`, 0x00FF00);
   }
@@ -83,14 +87,18 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     const playTime = calculatePlayTime(user.startTime);
     const total = user.totalPlayTime + playTime;
 
-    await axios.post(SHEET_API, {
-      userId,
-      playing: false,
-      startTime: null,
-      totalPlayTime: total,
-      guildId,
-      channelId,
-      displayName
+    await fetch(SHEET_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        playing: false,
+        startTime: null,
+        totalPlayTime: total,
+        guildId,
+        channelId,
+        displayName
+      })
     });
 
     sendToChannel(member, "League of Legends", `**${member.user.tag}** đã chơi **${playTime}** phút, tổng: **${total}** phút.`, 0xFF0000);
@@ -105,7 +113,7 @@ async function sendToChannel(member, activityName, description, color) {
       embeds: [
         {
           title: activityName,
-          description: `${description} - **Tên hiển thị**: ${member.displayName}`, // Đảm bảo displayName được đưa vào
+          description: `${description} - **Tên hiển thị**: ${member.displayName}`,
           color,
           footer: {
             text: `${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`
@@ -126,8 +134,9 @@ app.use(express.json());
 // API lấy bảng xếp hạng
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    const response = await axios.get(`${SHEET_API}?action=leaderboard`);
-    res.json(response.data);
+    const response = await fetch(`${SHEET_API_URL}?action=leaderboard`);
+    const data = await response.json();
+    res.json(data);
   } catch (error) {
     res.status(500).json({ message: 'Lỗi khi lấy bảng xếp hạng', error });
   }
@@ -138,15 +147,10 @@ app.get('/api/user/:userId', async (req, res) => {
   const { userId } = req.params;
 
   try {
-    const response = await axios.get(`${SHEET_API}?action=getUser&userId=${userId}`);
-    if (response.data?.userId) {
-      res.json({
-        userId: response.data.userId,
-        totalPlayTime: response.data.totalPlayTime,
-        playing: response.data.playing,
-        startTime: response.data.startTime,
-        displayName: response.data.displayName || ""
-      });
+    const response = await fetch(`${SHEET_API_URL}?action=getUser&userId=${userId}`);
+    const user = await response.json();
+    if (user?.userId) {
+      res.json(user);
     } else {
       res.status(404).json({ message: 'User not found' });
     }
@@ -155,7 +159,7 @@ app.get('/api/user/:userId', async (req, res) => {
   }
 });
 
-// API lưu thông tin người dùng (nếu bạn muốn dùng thủ công)
+// API lưu thông tin người dùng
 app.post('/api/save-user', async (req, res) => {
   const { userId, playing, startTime, totalPlayTime, displayName } = req.body;
 
@@ -164,14 +168,18 @@ app.post('/api/save-user', async (req, res) => {
   }
 
   try {
-    await axios.post(SHEET_API, {
-      userId,
-      playing,
-      startTime,
-      totalPlayTime,
-      guildId,
-      channelId,
-      displayName
+    await fetch(SHEET_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        playing,
+        startTime,
+        totalPlayTime,
+        guildId,
+        channelId,
+        displayName
+      })
     });
     res.json({ message: 'Đã lưu thông tin người dùng' });
   } catch (error) {

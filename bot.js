@@ -36,6 +36,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
 
   const member = newPresence.member;
   const userId = member.user.id;
+  const displayName = member.displayName;
 
   const isPlayingLol = newPresence.activities.some(act => act.name === "League of Legends");
   const isInLobby = newPresence.activities.some(act => ["In Lobby", "Đang trong sảnh chờ", "Đang tìm trận"].includes(act.state));
@@ -56,7 +57,8 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
       startTime: Date.now(),
       totalPlayTime: 0,
       guildId,
-      channelId
+      channelId,
+      displayName
     });
     sendToChannel(member, "League of Legends", `**${member.user.tag}** đã bắt đầu chơi.`, 0x00FF00);
   }
@@ -68,7 +70,8 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
       startTime: Date.now(),
       totalPlayTime: user.totalPlayTime,
       guildId,
-      channelId
+      channelId,
+      displayName
     });
     sendToChannel(member, "League of Legends", `**${member.user.tag}** đã bắt đầu chơi.`, 0x00FF00);
   }
@@ -83,7 +86,8 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
       startTime: null,
       totalPlayTime: total,
       guildId,
-      channelId
+      channelId,
+      displayName
     });
 
     sendToChannel(member, "League of Legends", `**${member.user.tag}** đã chơi **${playTime}** phút, tổng: **${total}** phút.`, 0xFF0000);
@@ -137,7 +141,8 @@ app.get('/api/user/:userId', async (req, res) => {
         userId: response.data.userId,
         totalPlayTime: response.data.totalPlayTime,
         playing: response.data.playing,
-        startTime: response.data.startTime
+        startTime: response.data.startTime,
+        displayName: response.data.displayName || ""
       });
     } else {
       res.status(404).json({ message: 'User not found' });
@@ -149,7 +154,7 @@ app.get('/api/user/:userId', async (req, res) => {
 
 // API lưu thông tin người dùng (nếu bạn muốn dùng thủ công)
 app.post('/api/save-user', async (req, res) => {
-  const { userId, playing, startTime, totalPlayTime } = req.body;
+  const { userId, playing, startTime, totalPlayTime, displayName } = req.body;
 
   if (!userId) {
     return res.status(400).json({ message: 'Thiếu userId' });
@@ -162,7 +167,8 @@ app.post('/api/save-user', async (req, res) => {
       startTime,
       totalPlayTime,
       guildId,
-      channelId
+      channelId,
+      displayName
     });
     res.json({ message: 'Đã lưu thông tin người dùng' });
   } catch (error) {

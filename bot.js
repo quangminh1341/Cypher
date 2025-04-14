@@ -70,7 +70,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
       guildId,
       channelId
     });
-    sendToChannel(member, "League of Legends", `**${member.user.tag}** đã bắt đầu chơi lại.`, 0x00FF00);
+    sendToChannel(member, "League of Legends", `**${member.user.tag}** đã bắt đầu chơi.`, 0x00FF00);
   }
 
   if (!isPlayingLol && user && user.playing) {

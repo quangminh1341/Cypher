@@ -24,11 +24,13 @@ client.once('ready', () => {
   console.log('Bot is online!');
 });
 
+// Hàm tính thời gian chơi (dưới dạng phút)
 function calculatePlayTime(startTime) {
   const endTime = Date.now();
   return Math.floor((endTime - startTime) / 60000);
 }
 
+// Khi có sự thay đổi trạng thái của người dùng
 client.on('presenceUpdate', async (oldPresence, newPresence) => {
   if (!newPresence || !newPresence.activities || !newPresence.guild || newPresence.guild.id !== guildId) return;
 
@@ -82,6 +84,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   }
 });
 
+// Hàm gửi Embed vào kênh Discord
 async function sendToChannel(member, activityName, description, color) {
   try {
     const channel = await client.channels.fetch(channelId);
@@ -103,15 +106,18 @@ async function sendToChannel(member, activityName, description, color) {
   }
 }
 
+// Tạo Express app
 const app = express();
 app.use(express.json());
 
+// API để thay đổi channel ID
 app.post('/api/set-channel-id', async (req, res) => {
   const { newChannelId } = req.body;
   try {
     const channel = await client.channels.fetch(newChannelId);
     channelId = newChannelId;
 
+    // Cập nhật thông tin channelId trong Google Sheet
     await axios.post(SHEET_API, {
       action: 'updateConfig',
       channelId
@@ -123,10 +129,12 @@ app.post('/api/set-channel-id', async (req, res) => {
   }
 });
 
+// API để thay đổi guild ID
 app.post('/api/set-guild-id', async (req, res) => {
   const { newGuildId } = req.body;
   guildId = newGuildId;
 
+  // Cập nhật thông tin guildId trong Google Sheet
   await axios.post(SHEET_API, {
     action: 'updateConfig',
     guildId
@@ -135,6 +143,7 @@ app.post('/api/set-guild-id', async (req, res) => {
   res.json({ message: 'Đã cập nhật guildId' });
 });
 
+// API lấy leaderboard
 app.get('/api/leaderboard', async (req, res) => {
   try {
     const response = await axios.get(`${SHEET_API}?action=leaderboard`);
@@ -144,10 +153,7 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Bot API đang chạy trên port ${PORT}`));
-
-// API: Lấy thông tin người dùng
+// API lấy thông tin người dùng
 app.get('/api/user/:userId', async (req, res) => {
   const { userId } = req.params;
 
@@ -168,7 +174,7 @@ app.get('/api/user/:userId', async (req, res) => {
   }
 });
 
-// API: Cập nhật thông tin người dùng (giống save)
+// API lưu thông tin người dùng
 app.post('/api/save-user', async (req, res) => {
   const { userId, playing, startTime, totalPlayTime } = req.body;
 
@@ -189,5 +195,8 @@ app.post('/api/save-user', async (req, res) => {
   }
 });
 
+// Lắng nghe trên cổng mà Render cung cấp
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Bot API đang chạy trên port ${PORT}`));
 
 client.login(DISCORD_TOKEN);

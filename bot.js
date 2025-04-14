@@ -24,13 +24,13 @@ client.once('ready', () => {
   console.log('Bot is online!');
 });
 
-// Hàm tính thời gian chơi (dưới dạng phút)
+// Hàm tính thời gian chơi (phút)
 function calculatePlayTime(startTime) {
   const endTime = Date.now();
   return Math.floor((endTime - startTime) / 60000);
 }
 
-// Khi có sự thay đổi trạng thái của người dùng
+// Xử lý khi trạng thái người dùng thay đổi
 client.on('presenceUpdate', async (oldPresence, newPresence) => {
   if (!newPresence || !newPresence.activities || !newPresence.guild || newPresence.guild.id !== guildId) return;
 
@@ -54,7 +54,9 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
       userId,
       playing: true,
       startTime: Date.now(),
-      totalPlayTime: 0
+      totalPlayTime: 0,
+      guildId,
+      channelId
     });
     sendToChannel(member, "League of Legends", `**${member.user.tag}** đã bắt đầu chơi.`, 0x00FF00);
   }
@@ -64,9 +66,11 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
       userId,
       playing: true,
       startTime: Date.now(),
-      totalPlayTime: user.totalPlayTime
+      totalPlayTime: user.totalPlayTime,
+      guildId,
+      channelId
     });
-    sendToChannel(member, "League of Legends", `**${member.user.tag}** đã bắt đầu chơi.`, 0x00FF00);
+    sendToChannel(member, "League of Legends", `**${member.user.tag}** đã bắt đầu chơi lại.`, 0x00FF00);
   }
 
   if (!isPlayingLol && user && user.playing) {
@@ -77,14 +81,16 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
       userId,
       playing: false,
       startTime: null,
-      totalPlayTime: total
+      totalPlayTime: total,
+      guildId,
+      channelId
     });
 
     sendToChannel(member, "League of Legends", `**${member.user.tag}** đã chơi **${playTime}** phút, tổng: **${total}** phút.`, 0xFF0000);
   }
 });
 
-// Hàm gửi Embed vào kênh Discord
+// Hàm gửi thông báo vào kênh
 async function sendToChannel(member, activityName, description, color) {
   try {
     const channel = await client.channels.fetch(channelId);
@@ -102,48 +108,15 @@ async function sendToChannel(member, activityName, description, color) {
     };
     await channel.send(embed);
   } catch (error) {
-    console.error('Error sending to channel:', error);
+    console.error('Lỗi gửi tin nhắn vào kênh:', error);
   }
 }
 
-// Tạo Express app
+// Khởi tạo Express app
 const app = express();
 app.use(express.json());
 
-// API để thay đổi channel ID
-app.post('/api/set-channel-id', async (req, res) => {
-  const { newChannelId } = req.body;
-  try {
-    const channel = await client.channels.fetch(newChannelId);
-    channelId = newChannelId;
-
-    // Cập nhật thông tin channelId trong Google Sheet
-    await axios.post(SHEET_API, {
-      action: 'updateConfig',
-      channelId
-    });
-
-    res.json({ message: 'Đã cập nhật channelId' });
-  } catch (error) {
-    res.status(500).json({ message: 'Channel không tồn tại', error });
-  }
-});
-
-// API để thay đổi guild ID
-app.post('/api/set-guild-id', async (req, res) => {
-  const { newGuildId } = req.body;
-  guildId = newGuildId;
-
-  // Cập nhật thông tin guildId trong Google Sheet
-  await axios.post(SHEET_API, {
-    action: 'updateConfig',
-    guildId
-  });
-
-  res.json({ message: 'Đã cập nhật guildId' });
-});
-
-// API lấy leaderboard
+// API lấy bảng xếp hạng
 app.get('/api/leaderboard', async (req, res) => {
   try {
     const response = await axios.get(`${SHEET_API}?action=leaderboard`);
@@ -174,7 +147,7 @@ app.get('/api/user/:userId', async (req, res) => {
   }
 });
 
-// API lưu thông tin người dùng
+// API lưu thông tin người dùng (nếu bạn muốn dùng thủ công)
 app.post('/api/save-user', async (req, res) => {
   const { userId, playing, startTime, totalPlayTime } = req.body;
 
@@ -187,7 +160,9 @@ app.post('/api/save-user', async (req, res) => {
       userId,
       playing,
       startTime,
-      totalPlayTime
+      totalPlayTime,
+      guildId,
+      channelId
     });
     res.json({ message: 'Đã lưu thông tin người dùng' });
   } catch (error) {
@@ -195,7 +170,7 @@ app.post('/api/save-user', async (req, res) => {
   }
 });
 
-// Lắng nghe trên cổng mà Render cung cấp
+// Server chạy trên Render hoặc localhost
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Bot API đang chạy trên port ${PORT}`));
 

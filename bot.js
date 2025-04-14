@@ -38,6 +38,9 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   const userId = member.user.id;
   const displayName = member.displayName;
 
+  console.log('Member Info:', member);
+  console.log('Display Name:', displayName);
+
   const isPlayingLol = newPresence.activities.some(act => act.name === "League of Legends");
   const isInLobby = newPresence.activities.some(act => ["In Lobby", "Đang trong sảnh chờ", "Đang tìm trận"].includes(act.state));
   if (isInLobby) return;
@@ -102,7 +105,7 @@ async function sendToChannel(member, activityName, description, color) {
       embeds: [
         {
           title: activityName,
-          description,
+          description: `${description} - **Tên hiển thị**: ${member.displayName}`, // Đảm bảo displayName được đưa vào
           color,
           footer: {
             text: `${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`

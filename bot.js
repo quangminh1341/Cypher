@@ -17,7 +17,7 @@ const client = new Client({
   ]
 });
 
-let guildId = '1311497270319124520';
+let guildId = '747767032186929212';
 let channelId = '1313481298504978543';
 
 client.once('ready', () => {

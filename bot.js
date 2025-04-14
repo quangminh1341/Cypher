@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import dotenv from 'dotenv';
 import express from 'express';
+import fetch from 'node-fetch';
 
 dotenv.config();
 
@@ -131,12 +132,40 @@ async function sendToChannel(member, activityName, description, color) {
 const app = express();
 app.use(express.json());
 
-// API lấy bảng xếp hạng
+// API lấy bảng xếp hạng 10 người chơi có tổng thời gian chơi cao nhất
 app.get('/api/leaderboard', async (req, res) => {
   try {
+    // Gọi API từ Google Sheets để lấy bảng xếp hạng
     const response = await fetch(`${SHEET_API_URL}?action=leaderboard`);
     const data = await response.json();
-    res.json(data);
+
+    if (data.length === 0) {
+      return res.status(404).json({ message: "Không có dữ liệu bảng xếp hạng." });
+    }
+
+    // Lọc 10 người chơi có tổng thời gian chơi cao nhất
+    const topUsers = data.sort((a, b) => b.totalPlayTime - a.totalPlayTime).slice(0, 10);
+
+    // Lấy thông tin người chơi có số phút cao nhất
+    const topPlayer = topUsers[0];
+    const topPlayerUser = await client.users.fetch(topPlayer.userId);
+    const topPlayerAvatar = topPlayerUser.avatarURL();
+
+    // Chuẩn bị dữ liệu bảng xếp hạng dưới dạng Markdown
+    const leaderboardText = topUsers
+      .map(
+        (user, index) => `**${index + 1}.** <@${user.userId}>: **${user.totalPlayTime}** phút`
+      )
+      .join("\n");
+
+    const updatedTime = new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+
+    // Trả về bảng xếp hạng dưới dạng JSON
+    res.json({
+      leaderboard: leaderboardText,
+      topPlayerIcon: topPlayerAvatar,
+      updatedTime: updatedTime
+    });
   } catch (error) {
     res.status(500).json({ message: 'Lỗi khi lấy bảng xếp hạng', error });
   }

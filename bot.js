@@ -135,38 +135,53 @@ app.use(express.json());
 // API lấy bảng xếp hạng 10 người chơi có tổng thời gian chơi cao nhất
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    // Gọi API từ Google Sheets để lấy bảng xếp hạng
     const response = await fetch(`${SHEET_API_URL}?action=leaderboard`);
     const data = await response.json();
 
-    if (data.length === 0) {
+    // Kiểm tra dữ liệu hợp lệ
+    if (!Array.isArray(data) || data.length === 0) {
       return res.status(404).json({ message: "Không có dữ liệu bảng xếp hạng." });
     }
 
-    // Lọc 10 người chơi có tổng thời gian chơi cao nhất
-    const topUsers = data.sort((a, b) => b.totalPlayTime - a.totalPlayTime).slice(0, 10);
+    // Lọc và ép kiểu để đảm bảo totalPlayTime là số
+    const topUsers = data
+      .map(user => ({
+        ...user,
+        totalPlayTime: Number(user.totalPlayTime) || 0
+      }))
+      .sort((a, b) => b.totalPlayTime - a.totalPlayTime)
+      .slice(0, 10);
 
-    // Lấy thông tin người chơi có số phút cao nhất
     const topPlayer = topUsers[0];
-    const topPlayerUser = await client.users.fetch(topPlayer.userId);
-    const topPlayerAvatar = topPlayerUser.avatarURL();
 
-    // Chuẩn bị dữ liệu bảng xếp hạng dưới dạng Markdown
+    // Lấy avatar của người chơi top 1 (nếu có)
+    let topPlayerAvatar = null;
+    try {
+      const topPlayerUser = await client.users.fetch(topPlayer.userId);
+      topPlayerAvatar = topPlayerUser.avatarURL();
+    } catch (fetchError) {
+      console.warn('Không thể lấy avatar người chơi top:', topPlayer.userId);
+    }
+
+    // Tạo chuỗi bảng xếp hạng
     const leaderboardText = topUsers
       .map(
-        (user, index) => `**${index + 1}.** <@${user.userId}>: **${user.totalPlayTime}** phút`
+        (user, index) =>
+          `**${index + 1}.** <@${user.userId}>: **${user.totalPlayTime}** phút`
       )
       .join("\n");
 
-    const updatedTime = new Date().toLocaleString('vn-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const updatedTime = new Date().toLocaleString('vi-VN', {
+      timeZone: 'Asia/Ho_Chi_Minh'
+    });
 
-    // Trả về bảng xếp hạng dưới dạng JSON
     res.json({
       leaderboard: leaderboardText,
       topPlayerIcon: topPlayerAvatar,
       updatedTime: updatedTime
     });
   } catch (error) {
+    console.error('Lỗi khi lấy bảng xếp hạng:', error);
     res.status(500).json({ message: 'Lỗi khi lấy bảng xếp hạng', error });
   }
 });
